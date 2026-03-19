@@ -1,0 +1,107 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  tribeUserId     String    @unique
+  zcashViewingKey String?
+  employees       Employee[]
+  payrolls        Payroll[]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+enum SalaryCurrency {
+  USD
+  ZEC
+}
+
+model Employee {
+  id              String            @id @default(cuid())
+  name            String
+  title           String?
+  walletAddress   String
+  walletVerified  Boolean           @default(false)
+  salaryAmount    Float
+  salaryCurrency  SalaryCurrency    @default(USD)
+  userId          String
+  user            User              @relation(fields: [userId], references: [id])
+  payrolls        PayrollEmployee[]
+  payments        Payment[]
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+}
+
+enum Schedule {
+  EVERY_TWO_WEEKS
+  EVERY_MONTH
+  EVERY_X_DAYS
+}
+
+model Payroll {
+  id         String            @id @default(cuid())
+  name       String
+  schedule   Schedule
+  customDays Int?
+  userId     String
+  user       User              @relation(fields: [userId], references: [id])
+  employees  PayrollEmployee[]
+  payments   Payment[]
+  runs       PayrollRun[]
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+}
+
+model PayrollEmployee {
+  payrollId  String
+  employeeId String
+  payroll    Payroll  @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@id([payrollId, employeeId])
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  SKIPPED
+}
+
+model Payment {
+  id         String        @id @default(cuid())
+  employeeId String
+  payrollId  String
+  runId      String
+  amountUsd  Float
+  amountZec  Float
+  status     PaymentStatus @default(PENDING)
+  txHash     String?
+  employee   Employee      @relation(fields: [employeeId], references: [id])
+  payroll    Payroll       @relation(fields: [payrollId], references: [id])
+  run        PayrollRun    @relation(fields: [runId], references: [id])
+  createdAt  DateTime      @default(now())
+}
+
+enum PayrollRunStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
+
+model PayrollRun {
+  id          String           @id @default(cuid())
+  payrollId   String
+  status      PayrollRunStatus @default(PENDING)
+  zecPriceUsd Float
+  payroll     Payroll          @relation(fields: [payrollId], references: [id])
+  payments    Payment[]
+  createdAt   DateTime         @default(now())
+  completedAt DateTime?
+}
