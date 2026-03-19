@@ -1,0 +1,67 @@
+query Employees {
+  employees {
+    id
+    name
+    title
+    walletAddress
+    walletVerified
+    salaryAmount
+    salaryCurrency
+  }
+}
+
+mutation CreateEmployee(
+  $name: String!
+  $title: String
+  $walletAddress: String!
+  $salaryAmount: Float!
+  $salaryCurrency: SalaryCurrency
+) {
+  createEmployee(
+    name: $name
+    title: $title
+    walletAddress: $walletAddress
+    salaryAmount: $salaryAmount
+    salaryCurrency: $salaryCurrency
+  ) {
+    id
+    name
+    title
+    walletAddress
+    walletVerified
+    salaryAmount
+    salaryCurrency
+  }
+}
+
+mutation UpdateEmployee(
+  $id: ID!
+  $name: String
+  $title: String
+  $walletAddress: String
+  $salaryAmount: Float
+  $salaryCurrency: SalaryCurrency
+) {
+  updateEmployee(
+    id: $id
+    name: $name
+    title: $title
+    walletAddress: $walletAddress
+    salaryAmount: $salaryAmount
+    salaryCurrency: $salaryCurrency
+  ) {
+    id
+    name
+    title
+    walletAddress
+    walletVerified
+    salaryAmount
+    salaryCurrency
+  }
+}
+
+mutation DeleteEmployee($id: ID!) {
+  deleteEmployee(id: $id) {
+    id
+  }
+}

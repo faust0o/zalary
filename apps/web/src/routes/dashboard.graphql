@@ -1,0 +1,29 @@
+query DashboardStats {
+  dashboardStats {
+    zecSpentByMonth {
+      month
+      amount
+    }
+    nextPayrollDue {
+      id
+      name
+      dueDate
+      employeeCount
+      totalUsd
+    }
+    recentRuns {
+      id
+      status
+      zecPriceUsd
+      createdAt
+      completedAt
+      payroll {
+        name
+      }
+      payments {
+        status
+        amountZec
+      }
+    }
+  }
+}

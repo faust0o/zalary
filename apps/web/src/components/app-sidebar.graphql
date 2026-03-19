@@ -1,0 +1,9 @@
+query MeSidebar {
+  me {
+    id
+    email
+  }
+  zecBalance {
+    available
+  }
+}

@@ -1,0 +1,16 @@
+query Payments {
+  payments {
+    id
+    amountUsd
+    amountZec
+    status
+    txHash
+    createdAt
+    employee {
+      name
+    }
+    payroll {
+      name
+    }
+  }
+}

@@ -1,0 +1,93 @@
+query Payrolls {
+  payrolls {
+    id
+    name
+    schedule
+    customDays
+    employees {
+      employeeId
+      employee {
+        id
+        name
+        salaryAmount
+      }
+    }
+  }
+}
+
+query Payroll($id: ID!) {
+  payroll(id: $id) {
+    id
+    name
+    schedule
+    customDays
+    employees {
+      employeeId
+      employee {
+        id
+        name
+        walletAddress
+        salaryAmount
+      }
+    }
+    runs {
+      id
+      status
+      createdAt
+    }
+  }
+}
+
+query AllEmployees {
+  employees {
+    id
+    name
+    salaryAmount
+  }
+}
+
+mutation CreatePayroll(
+  $name: String!
+  $schedule: Schedule!
+  $customDays: Int
+  $employeeIds: [ID!]!
+) {
+  createPayroll(
+    name: $name
+    schedule: $schedule
+    customDays: $customDays
+    employeeIds: $employeeIds
+  ) {
+    id
+  }
+}
+
+mutation UpdatePayroll(
+  $id: ID!
+  $name: String
+  $schedule: Schedule
+  $customDays: Int
+  $employeeIds: [ID!]
+) {
+  updatePayroll(
+    id: $id
+    name: $name
+    schedule: $schedule
+    customDays: $customDays
+    employeeIds: $employeeIds
+  ) {
+    id
+  }
+}
+
+mutation DeletePayroll($id: ID!) {
+  deletePayroll(id: $id) {
+    id
+  }
+}
+
+query ZecBalance {
+  zecBalance {
+    available
+  }
+}

@@ -1,0 +1,14 @@
+query MeSettings {
+  me {
+    id
+    email
+    zcashViewingKey
+  }
+}
+
+mutation UpdateUser($zcashViewingKey: String) {
+  updateUser(zcashViewingKey: $zcashViewingKey) {
+    id
+    zcashViewingKey
+  }
+}

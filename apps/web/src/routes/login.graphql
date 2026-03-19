@@ -1,0 +1,22 @@
+mutation RegisterUser(
+  $email: String!
+  $tribeUserId: String!
+  $zcashViewingKey: String
+) {
+  registerUser(
+    email: $email
+    tribeUserId: $tribeUserId
+    zcashViewingKey: $zcashViewingKey
+  ) {
+    id
+    email
+  }
+}
+
+query Me {
+  me {
+    id
+    email
+    zcashViewingKey
+  }
+}

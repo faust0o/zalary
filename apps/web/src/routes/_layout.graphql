@@ -1,0 +1,6 @@
+query MeLayout {
+  me {
+    id
+    zcashViewingKey
+  }
+}
