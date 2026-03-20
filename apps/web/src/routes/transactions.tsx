@@ -68,7 +68,7 @@ export function TransactionsPage() {
         .map((p) => ({
           id: p.id,
           amountZec: p.amountZec,
-          memo: p.memo,
+          createdAt: p.createdAt,
         }))
 
       const matches = matchTransactionsToPayments(sentTxs, pendingPayments)

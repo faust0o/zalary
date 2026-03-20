@@ -163,7 +163,7 @@ export function DisburseModal({
         .map((p) => ({
           id: p.id,
           amountZec: p.amountZec,
-          memo: p.memo,
+          createdAt: new Date().toISOString(), // payments just created this session
         }))
 
       if (!pending.length) return
@@ -352,7 +352,7 @@ export function DisburseModal({
             <div className="flex flex-col items-center py-6">
               <div className="rounded-xl p-4">
                 <QRCodeSVG
-                  value={`zcash:${currentPayment.employee.walletAddress}?amount=${currentPayment.amountZec.toFixed(8)}&memo=${encodeURIComponent(currentPayment.memo)}`}
+                  value={`zcash:${currentPayment.employee.walletAddress}?amount=${currentPayment.amountZec.toFixed(8)}&memo=${btoa(currentPayment.memo).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "")}`}
                   size={200}
                   fgColor={document.documentElement.classList.contains("dark") ? "#ffffff" : "#000000"}
                   bgColor="transparent"
