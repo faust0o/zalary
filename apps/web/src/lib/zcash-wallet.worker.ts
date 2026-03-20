@@ -1,0 +1,114 @@
+/// Web Worker that runs the WASM wallet off the main thread.
+/// Messages are queued and processed sequentially to prevent
+/// concurrent access to the WASM wallet (which causes aliasing errors).
+
+// Check if SharedArrayBuffer is available (required for atomics-enabled WASM)
+console.log(
+  "[zcash-worker] SharedArrayBuffer available:",
+  typeof SharedArrayBuffer !== "undefined",
+  "| crossOriginIsolated:",
+  (self as unknown as { crossOriginIsolated: boolean }).crossOriginIsolated
+)
+
+import type { ZcashViewWallet as ZcashViewWalletType } from "zcash-view-wasm"
+
+let wallet: InstanceType<typeof ZcashViewWalletType> | null = null
+
+type Request =
+  | { id: number; type: "create"; lightwalletdUrl: string; ufvk: string; birthdayHeight: number }
+  | { id: number; type: "fromBytes"; lightwalletdUrl: string; savedState: Uint8Array }
+  | { id: number; type: "sync" }
+  | { id: number; type: "getBalance" }
+  | { id: number; type: "getSentTransactions" }
+  | { id: number; type: "toBytes" }
+  | { id: number; type: "getChainTip" }
+
+// Sequential message queue to prevent concurrent WASM access
+const queue: Request[] = []
+let processing = false
+
+async function processQueue() {
+  if (processing) return
+  processing = true
+
+  while (queue.length > 0) {
+    const msg = queue.shift()!
+    try {
+      await handleMessage(msg)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      self.postMessage({ id: msg.id, error: message })
+    }
+  }
+
+  processing = false
+}
+
+self.onmessage = (e: MessageEvent<Request>) => {
+  queue.push(e.data)
+  processQueue()
+}
+
+async function handleMessage(msg: Request) {
+  switch (msg.type) {
+    case "create": {
+      const wasm = await import("zcash-view-wasm")
+      wallet = await wasm.ZcashViewWallet.create(
+        msg.lightwalletdUrl,
+        msg.ufvk,
+        BigInt(msg.birthdayHeight)
+      )
+      self.postMessage({ id: msg.id, result: true })
+      break
+    }
+
+    case "fromBytes": {
+      const wasm = await import("zcash-view-wasm")
+      wallet = await wasm.ZcashViewWallet.fromBytes(
+        msg.lightwalletdUrl,
+        msg.savedState
+      )
+      self.postMessage({ id: msg.id, result: true })
+      break
+    }
+
+    case "sync": {
+      if (!wallet) throw new Error("Wallet not initialized")
+      const summary = await wallet.syncWithProgress(
+        (scanned: number, tip: number) => {
+          self.postMessage({ type: "progress", scanned, tip })
+        }
+      )
+      self.postMessage({ id: msg.id, result: summary })
+      break
+    }
+
+    case "getBalance": {
+      if (!wallet) throw new Error("Wallet not initialized")
+      const balance = wallet.getBalance()
+      self.postMessage({ id: msg.id, result: balance })
+      break
+    }
+
+    case "getSentTransactions": {
+      if (!wallet) throw new Error("Wallet not initialized")
+      const txs = wallet.getSentTransactions()
+      self.postMessage({ id: msg.id, result: txs })
+      break
+    }
+
+    case "toBytes": {
+      if (!wallet) throw new Error("Wallet not initialized")
+      const bytes = wallet.toBytes()
+      self.postMessage({ id: msg.id, result: bytes }, [bytes.buffer])
+      break
+    }
+
+    case "getChainTip": {
+      if (!wallet) throw new Error("Wallet not initialized")
+      const tip = await wallet.getChainTip()
+      self.postMessage({ id: msg.id, result: Number(tip) })
+      break
+    }
+  }
+}
