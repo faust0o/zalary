@@ -82,6 +82,7 @@ model Payment {
   runId      String
   amountUsd  Float
   amountZec  Float
+  memo       String        @unique
   status     PaymentStatus @default(PENDING)
   txHash     String?
   employee   Employee      @relation(fields: [employeeId], references: [id])

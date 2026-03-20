@@ -16,6 +16,7 @@ export const Payment = objectType({
     t.nonNull.id("id")
     t.nonNull.float("amountUsd")
     t.nonNull.float("amountZec")
+    t.nonNull.string("memo")
     t.nonNull.field("status", { type: "PaymentStatus" })
     t.string("txHash")
     t.nonNull.field("employee", {

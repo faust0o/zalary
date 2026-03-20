@@ -1,5 +1,10 @@
+import { randomBytes } from "crypto"
 import { arg, idArg, mutationField, nonNull, stringArg } from "nexus"
 import { getZecPrice } from "../../services/price.js"
+
+function generateMemo(): string {
+  return `zalary:${randomBytes(8).toString("hex")}`
+}
 
 export const startPayrollRun = mutationField("startPayrollRun", {
   type: nonNull("PayrollRun"),
@@ -14,6 +19,16 @@ export const startPayrollRun = mutationField("startPayrollRun", {
       },
     })
     if (!payroll) throw new Error("Payroll not found")
+
+    // Check for an existing in-progress run for this payroll
+    const existingRun = await ctx.prisma.payrollRun.findFirst({
+      where: {
+        payrollId: payroll.id,
+        status: "IN_PROGRESS",
+      },
+      include: { payments: true },
+    })
+    if (existingRun) return existingRun
 
     const zecPriceUsd = await getZecPrice()
 
@@ -36,6 +51,7 @@ export const startPayrollRun = mutationField("startPayrollRun", {
               payrollId: payroll.id,
               amountUsd: employee.salaryAmount,
               amountZec: employee.salaryAmount / zecPriceUsd,
+              memo: generateMemo(),
               status: "PENDING" as const,
             })
           ),
