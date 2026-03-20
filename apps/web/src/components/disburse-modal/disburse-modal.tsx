@@ -32,6 +32,7 @@ interface PaymentItem {
   id: string
   amountUsd: number
   amountZec: number
+  memo: string
   status: string
   payrollName: string
   employee: {
@@ -162,8 +163,7 @@ export function DisburseModal({
         .map((p) => ({
           id: p.id,
           amountZec: p.amountZec,
-          createdAt: new Date().toISOString(), // payments just created this session
-          payrollName: p.payrollName,
+          memo: p.memo,
         }))
 
       if (!pending.length) return
@@ -352,7 +352,7 @@ export function DisburseModal({
             <div className="flex flex-col items-center py-6">
               <div className="rounded-xl p-4">
                 <QRCodeSVG
-                  value={`zcash:${currentPayment.employee.walletAddress}?amount=${currentPayment.amountZec.toFixed(8)}&message=${encodeURIComponent(`Zalary: ${currentPayment.payrollName}`)}`}
+                  value={`zcash:${currentPayment.employee.walletAddress}?amount=${currentPayment.amountZec.toFixed(8)}&memo=${encodeURIComponent(currentPayment.memo)}`}
                   size={200}
                   fgColor={document.documentElement.classList.contains("dark") ? "#ffffff" : "#000000"}
                   bgColor="transparent"

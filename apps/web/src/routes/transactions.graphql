@@ -3,6 +3,7 @@ query Payments {
     id
     amountUsd
     amountZec
+    memo
     status
     txHash
     createdAt

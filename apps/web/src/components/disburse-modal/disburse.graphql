@@ -25,6 +25,7 @@ mutation StartPayrollRun($payrollId: ID!) {
       id
       amountUsd
       amountZec
+      memo
       status
       employee {
         name

@@ -6,7 +6,7 @@ const LIGHTWALLETD_URL =
 
 const IDB_KEY = "zcash-wallet-state"
 const WALLET_VERSION_KEY = "zcash-wallet-version"
-const WALLET_VERSION = 12
+const WALLET_VERSION = 14
 
 export interface BalanceInfo {
   spendable: number

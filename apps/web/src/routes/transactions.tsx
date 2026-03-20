@@ -34,6 +34,7 @@ interface Payment {
   id: string
   amountUsd: number
   amountZec: number
+  memo: string
   status: string
   txHash: string | null
   createdAt: string
@@ -67,8 +68,7 @@ export function TransactionsPage() {
         .map((p) => ({
           id: p.id,
           amountZec: p.amountZec,
-          createdAt: p.createdAt,
-          payrollName: p.payroll.name,
+          memo: p.memo,
         }))
 
       const matches = matchTransactionsToPayments(sentTxs, pendingPayments)
