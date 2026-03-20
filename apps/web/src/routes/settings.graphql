@@ -3,12 +3,14 @@ query MeSettings {
     id
     email
     zcashViewingKey
+    walletBirthdayHeight
   }
 }
 
-mutation UpdateUser($zcashViewingKey: String) {
-  updateUser(zcashViewingKey: $zcashViewingKey) {
+mutation UpdateUser($zcashViewingKey: String, $walletBirthdayHeight: Int) {
+  updateUser(zcashViewingKey: $zcashViewingKey, walletBirthdayHeight: $walletBirthdayHeight) {
     id
     zcashViewingKey
+    walletBirthdayHeight
   }
 }

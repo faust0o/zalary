@@ -15,20 +15,20 @@ import {
   DialogTrigger,
 } from "@workspace/ui/components/dialog"
 import {
-  Drawer,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-} from "@workspace/ui/components/drawer"
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@workspace/ui/components/sheet"
 import { Identicon } from "@workspace/ui/components/Identicon"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
 import { Separator } from "@workspace/ui/components/separator"
-import { Check, Copy, Plus, Wallet } from "lucide-react"
-import { useState } from "react"
-import { CreateEmployeeDocument, DeleteEmployeeDocument, EmployeesDocument, UpdateEmployeeDocument } from "../graphql/__generated__/graphql"
+import { Check, Copy, FileUp, Plus, Wallet } from "lucide-react"
+import { useRef, useState } from "react"
+import { CreateEmployeeDocument, DeleteEmployeeDocument, EmployeesDocument, ImportEmployeesCsvDocument, UpdateEmployeeDocument } from "../graphql/__generated__/graphql"
 import { useTitle } from "../hooks/use-title"
 
 type SalaryCurrency = "USD" | "ZEC"
@@ -72,6 +72,7 @@ export function EmployeesPage() {
   const [createEmployee] = useMutation(CreateEmployeeDocument)
   const [updateEmployee] = useMutation(UpdateEmployeeDocument)
   const [deleteEmployee] = useMutation(DeleteEmployeeDocument)
+  const [importEmployeesCsv] = useMutation(ImportEmployeesCsvDocument)
 
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(
@@ -84,6 +85,27 @@ export function EmployeesPage() {
   const [walletAddress, setWalletAddress] = useState("")
   const [salary, setSalary] = useState("")
   const [currency, setCurrency] = useState<SalaryCurrency>("USD")
+
+  const [csvDialogOpen, setCsvDialogOpen] = useState(false)
+  const [csvError, setCsvError] = useState<string | null>(null)
+  const [csvImporting, setCsvImporting] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  async function handleCsvImport(file: File) {
+    setCsvError(null)
+    setCsvImporting(true)
+    try {
+      const text = await file.text()
+      await importEmployeesCsv({ variables: { csvContent: text } })
+      setCsvDialogOpen(false)
+      refetch()
+    } catch (err) {
+      setCsvError(err instanceof Error ? err.message : "Failed to import CSV")
+    } finally {
+      setCsvImporting(false)
+      if (fileInputRef.current) fileInputRef.current.value = ""
+    }
+  }
 
   const [editName, setEditName] = useState("")
   const [editTitle, setEditTitle] = useState("")
@@ -150,13 +172,60 @@ export function EmployeesPage() {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <h2 className="text-4xl font-light tracking-tight">Employees</h2>
-        <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 size-4" />
-              Add Employee
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <Dialog open={csvDialogOpen} onOpenChange={(open) => { setCsvDialogOpen(open); if (!open) setCsvError(null) }}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <FileUp className="mr-2 size-4" />
+                Import CSV
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Import Employees from CSV</DialogTitle>
+                <DialogDescription>
+                  Upload a CSV file with employee data. The file must include these columns (title is optional):
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="bg-muted rounded-md p-3">
+                  <p className="mb-2 text-sm font-medium">Expected format:</p>
+                  <pre className="text-muted-foreground text-xs">
+{`name,walletAddress,usdSalary,title
+Alice Johnson,zs1abc...def,5000,Lead Engineer
+Bob Smith,zs1ghi...jkl,4500,Designer`}
+                  </pre>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="csv-file">Select CSV file</Label>
+                  <Input
+                    id="csv-file"
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".csv,text/csv"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) handleCsvImport(file)
+                    }}
+                    disabled={csvImporting}
+                  />
+                </div>
+                {csvError && (
+                  <p className="text-destructive text-sm">{csvError}</p>
+                )}
+                {csvImporting && (
+                  <p className="text-muted-foreground text-sm">Importing...</p>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
+          <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 size-4" />
+                Add Employee
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Add Employee</DialogTitle>
@@ -268,6 +337,7 @@ export function EmployeesPage() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {loading ? (
@@ -337,86 +407,84 @@ export function EmployeesPage() {
         </div>
       )}
 
-      <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
-        <DrawerContent>
-          <div className="mx-auto w-full max-w-md">
-            <DrawerHeader>
-              <DrawerTitle>Employee Details</DrawerTitle>
-              <DrawerDescription>
-                Edit employee information or remove them.
-              </DrawerDescription>
-            </DrawerHeader>
-            <div className="space-y-4 p-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-name">Name</Label>
-                <Input
-                  id="edit-name"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-title">Title</Label>
-                <Input
-                  id="edit-title"
-                  value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-wallet">Wallet Address</Label>
-                <Input
-                  id="edit-wallet"
-                  value={editWallet}
-                  onChange={(e) => setEditWallet(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-salary">Salary</Label>
-                <div className="flex justify-center">
-                  <div className="bg-muted inline-flex rounded-lg p-1">
-                    <button
-                      type="button"
-                      className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${editCurrency === "USD" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-                      onClick={() => setEditCurrency("USD")}
-                    >
-                      USD
-                    </button>
-                    <button
-                      type="button"
-                      className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${editCurrency === "ZEC" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-                      onClick={() => setEditCurrency("ZEC")}
-                    >
-                      ZEC
-                    </button>
-                  </div>
-                </div>
-                <Input
-                  id="edit-salary"
-                  type="text"
-                  inputMode="decimal"
-                  value={
-                    editSalary
-                      ? parseFloat(editSalary).toLocaleString("en-US")
-                      : ""
-                  }
-                  onChange={(e) => {
-                    const raw = e.target.value.replace(/[^0-9.]/g, "")
-                    setEditSalary(raw)
-                  }}
-                  className="h-14 text-center font-mono !text-3xl font-bold"
-                />
-              </div>
+      <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>Employee Details</SheetTitle>
+            <SheetDescription>
+              Edit employee information or remove them.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="space-y-4 p-6">
+            <div className="space-y-2">
+              <Label htmlFor="edit-name">Name</Label>
+              <Input
+                id="edit-name"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+              />
             </div>
-            <DrawerFooter>
-              <Button onClick={handleUpdate}>Save Changes</Button>
-              <Button variant="destructive" onClick={handleDelete}>
-                Remove Employee
-              </Button>
-            </DrawerFooter>
+            <div className="space-y-2">
+              <Label htmlFor="edit-title">Title</Label>
+              <Input
+                id="edit-title"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-wallet">Wallet Address</Label>
+              <Input
+                id="edit-wallet"
+                value={editWallet}
+                onChange={(e) => setEditWallet(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-salary">Salary</Label>
+              <div className="flex justify-center">
+                <div className="bg-muted inline-flex rounded-lg p-1">
+                  <button
+                    type="button"
+                    className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${editCurrency === "USD" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                    onClick={() => setEditCurrency("USD")}
+                  >
+                    USD
+                  </button>
+                  <button
+                    type="button"
+                    className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${editCurrency === "ZEC" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                    onClick={() => setEditCurrency("ZEC")}
+                  >
+                    ZEC
+                  </button>
+                </div>
+              </div>
+              <Input
+                id="edit-salary"
+                type="text"
+                inputMode="decimal"
+                value={
+                  editSalary
+                    ? parseFloat(editSalary).toLocaleString("en-US")
+                    : ""
+                }
+                onChange={(e) => {
+                  const raw = e.target.value.replace(/[^0-9.]/g, "")
+                  setEditSalary(raw)
+                }}
+                className="h-14 text-center font-mono !text-3xl font-bold"
+              />
+            </div>
           </div>
-        </DrawerContent>
-      </Drawer>
+          <SheetFooter>
+            <Button onClick={handleUpdate}>Save Changes</Button>
+            <Button variant="destructive" onClick={handleDelete}>
+              Remove Employee
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

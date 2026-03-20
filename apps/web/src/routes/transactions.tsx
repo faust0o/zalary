@@ -1,4 +1,4 @@
-import { useQuery } from "@apollo/client/react"
+import { useMutation, useQuery } from "@apollo/client/react"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import {
@@ -20,10 +20,15 @@ import {
   TableHeader,
   TableRow,
 } from "@workspace/ui/components/table"
-import { ArrowLeftRight, Download } from "lucide-react"
+import { ArrowLeftRight, Download, RefreshCw } from "lucide-react"
 import { useMemo, useState } from "react"
+import {
+  PaymentsDocument,
+  UpdatePaymentStatusDocument,
+} from "../graphql/__generated__/graphql"
 import { useTitle } from "../hooks/use-title"
-import { PaymentsDocument } from "../graphql/__generated__/graphql"
+import { useZcashWallet } from "../hooks/use-zcash-wallet"
+import { matchTransactionsToPayments } from "../lib/match-transactions"
 
 interface Payment {
   id: string
@@ -43,9 +48,49 @@ function truncateHash(hash: string): string {
 
 export function TransactionsPage() {
   useTitle("Transactions")
-  const { data, loading } = useQuery(PaymentsDocument)
+  const { data, loading, refetch } = useQuery(PaymentsDocument)
+  const [updatePaymentStatus] = useMutation(UpdatePaymentStatusDocument)
+  const { sync, getSentTxs, initialized: walletReady, syncing } = useZcashWallet()
   const [statusFilter, setStatusFilter] = useState("all")
   const [payrollFilter, setPayrollFilter] = useState("all")
+  const [resyncing, setResyncing] = useState(false)
+  const [matchCount, setMatchCount] = useState<number | null>(null)
+
+  async function handleResync() {
+    setResyncing(true)
+    setMatchCount(null)
+    try {
+      await sync()
+      const sentTxs = await getSentTxs()
+      const pendingPayments = allPayments
+        .filter((p) => p.status === "PENDING")
+        .map((p) => ({
+          id: p.id,
+          amountZec: p.amountZec,
+          createdAt: p.createdAt,
+          payrollName: p.payroll.name,
+        }))
+
+      const matches = matchTransactionsToPayments(sentTxs, pendingPayments)
+
+      for (const match of matches) {
+        await updatePaymentStatus({
+          variables: {
+            paymentId: match.paymentId,
+            status: "COMPLETED" as never,
+            txHash: match.txHash,
+          },
+        })
+      }
+
+      setMatchCount(matches.length)
+      if (matches.length > 0) await refetch()
+    } catch (e) {
+      console.error("Resync failed:", e)
+    } finally {
+      setResyncing(false)
+    }
+  }
 
   const allPayments: Payment[] = (data as { payments?: Payment[] })?.payments ?? []
 
@@ -101,7 +146,7 @@ export function TransactionsPage() {
         </div>
         <div className="flex items-center gap-2">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[140px]">
+            <SelectTrigger className="!h-10 text-md w-[140px]">
               <SelectValue placeholder="All Statuses" />
             </SelectTrigger>
             <SelectContent>
@@ -112,7 +157,7 @@ export function TransactionsPage() {
             </SelectContent>
           </Select>
           <Select value={payrollFilter} onValueChange={setPayrollFilter}>
-            <SelectTrigger className="w-[160px]">
+            <SelectTrigger className="!h-10 text-md w-[160px]">
               <SelectValue placeholder="All Payrolls" />
             </SelectTrigger>
             <SelectContent>
@@ -124,7 +169,22 @@ export function TransactionsPage() {
               ))}
             </SelectContent>
           </Select>
-          <Button variant="outline" size="icon">
+          {walletReady && (
+            <Button
+              variant="outline"
+              onClick={handleResync}
+              disabled={resyncing || syncing}
+            >
+              <RefreshCw className={`mr-1.5 size-4 ${resyncing ? "animate-spin" : ""}`} />
+              {resyncing ? "Syncing..." : "Resync Wallet"}
+            </Button>
+          )}
+          {matchCount !== null && matchCount > 0 && (
+            <span className="text-sm font-medium text-green-600">
+              {matchCount} payment{matchCount !== 1 ? "s" : ""} matched
+            </span>
+          )}
+          <Button variant="outline" size="icon" className="h-10 w-10">
             <Download className="size-4" />
           </Button>
         </div>

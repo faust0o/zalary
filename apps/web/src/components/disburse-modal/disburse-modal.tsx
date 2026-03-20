@@ -12,16 +12,21 @@ import { Label } from "@workspace/ui/components/label"
 import { Progress } from "@workspace/ui/components/progress"
 import {
   ArrowRight,
+  Check,
   ChevronLeft,
   ChevronRight,
   PartyPopper,
 } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import {
+  CompletePayrollRunDocument,
   PayrollsForDisburseDocument,
   StartPayrollRunDocument,
+  UpdatePaymentStatusDocument,
 } from "../../graphql/__generated__/graphql"
+import { useZcashWallet } from "../../hooks/use-zcash-wallet"
+import { matchTransactionsToPayments } from "../../lib/match-transactions"
 
 interface PaymentItem {
   id: string
@@ -54,6 +59,9 @@ export function DisburseModal({
 }) {
   const { data } = useQuery(PayrollsForDisburseDocument, { skip: !open })
   const [startPayrollRun] = useMutation(StartPayrollRunDocument)
+  const [updatePaymentStatus] = useMutation(UpdatePaymentStatusDocument)
+  const [completePayrollRun] = useMutation(CompletePayrollRunDocument)
+  const { sync, getSentTxs, initialized: walletReady } = useZcashWallet()
 
   const [step, setStep] = useState<Step>("select")
   const [selectedPayrollIds, setSelectedPayrollIds] = useState<string[]>([])
@@ -62,6 +70,9 @@ export function DisburseModal({
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isStarting, setIsStarting] = useState(false)
   const [autoStarted, setAutoStarted] = useState(false)
+  const [detectedPayments, setDetectedPayments] = useState<Set<string>>(new Set())
+  const [detecting, setDetecting] = useState(false)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const payrolls = data?.payrolls ?? []
 
@@ -138,13 +149,92 @@ export function DisburseModal({
     }
   }
 
+  // Poll for matching transactions during payout step
+  const checkForMatches = useCallback(async () => {
+    if (!walletReady) return
+
+    setDetecting(true)
+    try {
+      await sync()
+      const sentTxs = await getSentTxs()
+      const pending = allPayments
+        .filter((p) => p.status === "PENDING" && !detectedPayments.has(p.id))
+        .map((p) => ({
+          id: p.id,
+          amountZec: p.amountZec,
+          createdAt: new Date().toISOString(), // payments just created this session
+          payrollName: p.payrollName,
+        }))
+
+      if (!pending.length) return
+
+      const matches = matchTransactionsToPayments(sentTxs, pending)
+
+      for (const match of matches) {
+        await updatePaymentStatus({
+          variables: {
+            paymentId: match.paymentId,
+            status: "COMPLETED" as never,
+            txHash: match.txHash,
+          },
+        })
+        setDetectedPayments((prev) => new Set([...prev, match.paymentId]))
+        setAllPayments((prev) =>
+          prev.map((p) =>
+            p.id === match.paymentId ? { ...p, status: "COMPLETED" } : p
+          )
+        )
+      }
+
+      // Auto-advance if current payment was matched
+      if (matches.some((m) => m.paymentId === allPayments[currentIndex]?.id)) {
+        setTimeout(() => {
+          if (currentIndex < allPayments.length - 1) {
+            setCurrentIndex((i) => i + 1)
+          } else {
+            // All done — try to complete the runs
+            for (const run of runs) {
+              completePayrollRun({ variables: { runId: run.id } }).catch(() => {})
+            }
+            setStep("done")
+          }
+        }, 1500)
+      }
+    } finally {
+      setDetecting(false)
+    }
+  }, [walletReady, sync, getSentTxs, allPayments, detectedPayments, currentIndex, runs, updatePaymentStatus, completePayrollRun])
+
+  // Start/stop polling when entering/leaving payout step
+  useEffect(() => {
+    if (step !== "payout" || !walletReady) {
+      if (pollRef.current) clearInterval(pollRef.current)
+      pollRef.current = null
+      return
+    }
+
+    // Initial check after a short delay
+    const timeout = setTimeout(checkForMatches, 3000)
+    pollRef.current = setInterval(checkForMatches, 10_000)
+
+    return () => {
+      clearTimeout(timeout)
+      if (pollRef.current) clearInterval(pollRef.current)
+      pollRef.current = null
+    }
+  }, [step, walletReady, checkForMatches])
+
   function handleClose() {
+    if (pollRef.current) clearInterval(pollRef.current)
+    pollRef.current = null
     setStep("select")
     setSelectedPayrollIds([])
     setRuns([])
     setAllPayments([])
     setCurrentIndex(0)
     setAutoStarted(false)
+    setDetectedPayments(new Set())
+    setDetecting(false)
     onOpenChange(false)
   }
 
@@ -287,6 +377,21 @@ export function DisburseModal({
                       maximumFractionDigits: 2,
                     })}
                   </p>
+                </div>
+
+                {/* Transaction detection status */}
+                <div className="mt-4">
+                  {detectedPayments.has(currentPayment.id) ? (
+                    <div className="flex items-center gap-1.5 text-sm font-medium text-green-600">
+                      <Check className="size-4" />
+                      Payment detected!
+                    </div>
+                  ) : walletReady ? (
+                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                      <span className={`inline-block size-2 rounded-full bg-amber-400 ${detecting ? "animate-pulse" : "animate-[pulse_3s_ease-in-out_infinite]"}`} />
+                      {detecting ? "Syncing wallet..." : "Waiting for transaction..."}
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </div>

@@ -14,7 +14,7 @@ import { ArrowLeft, Trash2, X } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { useTitle } from "../hooks/use-title"
-import { PayrollDocument, AllEmployeesDocument, CreatePayrollDocument, UpdatePayrollDocument, DeletePayrollDocument } from "../graphql/__generated__/graphql"
+import { PayrollDocument, PayrollsDocument, AllEmployeesDocument, CreatePayrollDocument, UpdatePayrollDocument, DeletePayrollDocument } from "../graphql/__generated__/graphql"
 
 export function PayrollDetailPage() {
   const { id } = useParams()
@@ -28,9 +28,10 @@ export function PayrollDetailPage() {
   })
   const { data: employeesData } = useQuery(AllEmployeesDocument)
 
-  const [createPayroll] = useMutation(CreatePayrollDocument)
-  const [updatePayroll] = useMutation(UpdatePayrollDocument)
-  const [deletePayroll] = useMutation(DeletePayrollDocument)
+  const refetchPayrolls = { refetchQueries: [{ query: PayrollsDocument }] }
+  const [createPayroll] = useMutation(CreatePayrollDocument, refetchPayrolls)
+  const [updatePayroll] = useMutation(UpdatePayrollDocument, refetchPayrolls)
+  const [deletePayroll] = useMutation(DeletePayrollDocument, refetchPayrolls)
 
   const [name, setName] = useState("")
   const [schedule, setSchedule] = useState("EVERY_MONTH")

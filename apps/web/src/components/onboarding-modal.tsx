@@ -49,6 +49,7 @@ export function OnboardingModal({
   const [keyInputMode, setKeyInputMode] = useState<KeyInputMode>("viewing-key")
   const [viewingKey, setViewingKey] = useState("")
   const [seedPhrase, setSeedPhrase] = useState("")
+  const [birthdayHeight, setBirthdayHeight] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -106,8 +107,16 @@ export function OnboardingModal({
 
       setStep("verifying")
 
-      // Key is validated via WASM — save it
-      await updateUser({ variables: { zcashViewingKey: key } })
+      // Key is validated via WASM — save it along with birthday height
+      const parsedHeight = birthdayHeight.trim()
+        ? parseInt(birthdayHeight.trim(), 10)
+        : null
+      await updateUser({
+        variables: {
+          zcashViewingKey: key,
+          ...(parsedHeight ? { walletBirthdayHeight: parsedHeight } : {}),
+        },
+      })
 
       setStep("done")
     } catch (err) {
@@ -263,6 +272,24 @@ export function OnboardingModal({
                 </p>
               </div>
             )}
+
+            <div className="space-y-2">
+              <Label htmlFor="birthday-height">
+                Wallet Birthday Height
+              </Label>
+              <Input
+                id="birthday-height"
+                type="number"
+                value={birthdayHeight}
+                onChange={(e) => setBirthdayHeight(e.target.value)}
+                placeholder="e.g. 2800000"
+                className="font-mono text-sm"
+              />
+              <p className="text-xs text-muted-foreground">
+                The block height when your wallet was created. Found in your
+                wallet's backup info. Speeds up initial sync.
+              </p>
+            </div>
 
             {error && (
               <div className="flex items-center gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">

@@ -223,7 +223,7 @@ export function PayrollsPage() {
                   <div className="mt-6 flex items-center justify-between border-t text-sm text-muted-foreground">
                     <span className="flex-1 text-center">${totalUsd.toLocaleString()}</span>
                     <Separator orientation="vertical" className="h-8" />
-                    <span className="flex-1 flex justify-center items-center gap-0.5">
+                    <span className="flex-1 flex justify-center items-center gap-1">
                       {payroll.employees.length} <Users className="size-3.5" />
                     </span>
                     <Separator orientation="vertical" className="h-8" />

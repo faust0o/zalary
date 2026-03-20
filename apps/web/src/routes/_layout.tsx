@@ -10,6 +10,7 @@ import { AppSidebar } from "../components/app-sidebar"
 import { OnboardingModal } from "../components/onboarding-modal"
 import { MeLayoutDocument } from "../graphql/__generated__/graphql"
 import { useAuth } from "../hooks/use-auth"
+import { ZcashWalletProvider } from "../hooks/use-zcash-wallet"
 
 export function Layout() {
   const { user, loading } = useAuth()
@@ -21,7 +22,7 @@ export function Layout() {
   useEffect(() => {
     if (fromRegistration) {
       setOnboardingOpen(true)
-    } else if (meData?.me && !meData.me.zcashViewingKey) {
+    } else if (meData?.me && (!meData.me.zcashViewingKey || !meData.me.walletBirthdayHeight)) {
       setOnboardingOpen(true)
     }
   }, [meData, fromRegistration])
@@ -38,23 +39,28 @@ export function Layout() {
     return <Navigate to="/login" replace />
   }
 
+  const ufvk = meData?.me?.zcashViewingKey ?? null
+  const birthdayHeight = meData?.me?.walletBirthdayHeight ?? null
+
   return (
-    <TooltipProvider>
-      <SidebarProvider>
-        <AppSidebar />
-        <SidebarInset>
-          <main className="flex-1 overflow-auto bg-gray-50 p-6 dark:bg-neutral-900">
-            <div className="mx-auto w-full max-w-5xl">
-              <Outlet />
-            </div>
-          </main>
-        </SidebarInset>
-        <OnboardingModal
-          open={onboardingOpen}
-          onOpenChange={setOnboardingOpen}
-          skipPasskey={fromRegistration}
-        />
-      </SidebarProvider>
-    </TooltipProvider>
+    <ZcashWalletProvider ufvk={ufvk} birthdayHeight={birthdayHeight}>
+      <TooltipProvider>
+        <SidebarProvider>
+          <AppSidebar />
+          <SidebarInset>
+            <main className="flex-1 overflow-auto bg-gray-50 p-6 dark:bg-neutral-900">
+              <div className="mx-auto w-full max-w-5xl">
+                <Outlet />
+              </div>
+            </main>
+          </SidebarInset>
+          <OnboardingModal
+            open={onboardingOpen}
+            onOpenChange={setOnboardingOpen}
+            skipPasskey={fromRegistration}
+          />
+        </SidebarProvider>
+      </TooltipProvider>
+    </ZcashWalletProvider>
   )
 }

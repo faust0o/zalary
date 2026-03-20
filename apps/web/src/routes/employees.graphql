@@ -65,3 +65,15 @@ mutation DeleteEmployee($id: ID!) {
     id
   }
 }
+
+mutation ImportEmployeesCsv($csvContent: String!) {
+  importEmployeesCsv(csvContent: $csvContent) {
+    id
+    name
+    title
+    walletAddress
+    walletVerified
+    salaryAmount
+    salaryCurrency
+  }
+}
