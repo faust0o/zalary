@@ -27,6 +27,20 @@ export function matchTransactionsToPayments(
   sentTxs: SentTransaction[],
   pendingPayments: PendingPayment[]
 ): MatchResult[] {
+  console.log(
+    `[match] Matching ${sentTxs.length} sent txs against ${pendingPayments.length} pending payments`
+  )
+  for (const tx of sentTxs) {
+    console.log(
+      `[match]   tx: ${tx.txid.slice(0, 12)}... amount=${tx.amount_zec} timestamp=${tx.timestamp} height=${tx.block_height}`
+    )
+  }
+  for (const p of pendingPayments) {
+    console.log(
+      `[match]   payment: ${p.id.slice(0, 8)}... amount=${p.amountZec} created=${p.createdAt}`
+    )
+  }
+
   const results: MatchResult[] = []
   const matchedTxIds = new Set<string>()
   const matchedPaymentIds = new Set<string>()
@@ -44,12 +58,28 @@ export function matchTransactionsToPayments(
     for (const tx of sentTxs) {
       if (matchedTxIds.has(tx.txid)) continue
 
+      const timeDiff = tx.timestamp - paymentCreatedAt
+      const amountDiff = Math.abs(tx.amount_zec - payment.amountZec)
+
       // Must be after payment was created
-      if (tx.timestamp < paymentCreatedAt) continue
+      if (tx.timestamp < paymentCreatedAt) {
+        console.log(
+          `[match]   SKIP ${tx.txid.slice(0, 8)} for ${payment.id.slice(0, 8)}: tx too early (diff=${timeDiff.toFixed(0)}s)`
+        )
+        continue
+      }
 
       // Amount must match within tolerance
-      if (Math.abs(tx.amount_zec - payment.amountZec) > AMOUNT_TOLERANCE) continue
+      if (amountDiff > AMOUNT_TOLERANCE) {
+        console.log(
+          `[match]   SKIP ${tx.txid.slice(0, 8)} for ${payment.id.slice(0, 8)}: amount mismatch (tx=${tx.amount_zec} payment=${payment.amountZec} diff=${amountDiff})`
+        )
+        continue
+      }
 
+      console.log(
+        `[match]   MATCH ${tx.txid.slice(0, 8)} -> ${payment.id.slice(0, 8)} (amount=${tx.amount_zec}, diff=${amountDiff})`
+      )
       results.push({
         paymentId: payment.id,
         txHash: tx.txid,
@@ -60,5 +90,6 @@ export function matchTransactionsToPayments(
     }
   }
 
+  console.log(`[match] Result: ${results.length} matches`)
   return results
 }
