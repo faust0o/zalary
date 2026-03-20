@@ -14,5 +14,16 @@ MODE="${1:---dev}"
 
 wasm-pack build --target web "$MODE"
 
+# wasm-pack doesn't include snippets/ in the files list; patch it in
+node -e '
+  const pkg = require("./pkg/package.json");
+  pkg.description = "Zcash view-only light wallet for the browser, compiled to WebAssembly.";
+  pkg.license = "MIT";
+  pkg.repository = { type: "git", url: "https://github.com/AustinZhu/zalary.git", directory: "packages/zcash-view-wasm" };
+  if (!pkg.files.includes("snippets")) pkg.files.push("snippets");
+  require("fs").writeFileSync("./pkg/package.json", JSON.stringify(pkg, null, 2) + "\n");
+'
+
+cp README.md pkg/
 echo "Build complete. Output in pkg/"
 echo "WASM size: $(du -sh pkg/*.wasm | cut -f1)"
