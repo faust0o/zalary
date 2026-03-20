@@ -13,5 +13,6 @@ export const employeePermissions: {
     createEmployee: isAuthenticated,
     updateEmployee: isAuthenticated,
     deleteEmployee: isAuthenticated,
+    importEmployeesCsv: isAuthenticated,
   },
 }
