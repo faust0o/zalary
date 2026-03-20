@@ -21,7 +21,7 @@ import {
   TableRow,
 } from "@workspace/ui/components/table"
 import { ArrowLeftRight, Download, RefreshCw } from "lucide-react"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import {
   PaymentsDocument,
   UpdatePaymentStatusDocument,
@@ -57,34 +57,41 @@ export function TransactionsPage() {
   const [resyncing, setResyncing] = useState(false)
   const [matchCount, setMatchCount] = useState<number | null>(null)
 
+  async function matchPayments() {
+    const sentTxs = await getSentTxs()
+    const pendingPayments = allPayments
+      .filter((p) => p.status === "PENDING")
+      .map((p) => ({
+        id: p.id,
+        amountZec: p.amountZec,
+        createdAt: p.createdAt,
+      }))
+
+    if (!pendingPayments.length || !sentTxs.length) return 0
+
+    const matches = matchTransactionsToPayments(sentTxs, pendingPayments)
+
+    for (const match of matches) {
+      await updatePaymentStatus({
+        variables: {
+          paymentId: match.paymentId,
+          status: "COMPLETED" as never,
+          txHash: match.txHash,
+        },
+      })
+    }
+
+    if (matches.length > 0) await refetch()
+    return matches.length
+  }
+
   async function handleResync() {
     setResyncing(true)
     setMatchCount(null)
     try {
       await sync()
-      const sentTxs = await getSentTxs()
-      const pendingPayments = allPayments
-        .filter((p) => p.status === "PENDING")
-        .map((p) => ({
-          id: p.id,
-          amountZec: p.amountZec,
-          createdAt: p.createdAt,
-        }))
-
-      const matches = matchTransactionsToPayments(sentTxs, pendingPayments)
-
-      for (const match of matches) {
-        await updatePaymentStatus({
-          variables: {
-            paymentId: match.paymentId,
-            status: "COMPLETED" as never,
-            txHash: match.txHash,
-          },
-        })
-      }
-
-      setMatchCount(matches.length)
-      if (matches.length > 0) await refetch()
+      const count = await matchPayments()
+      setMatchCount(count)
     } catch (e) {
       console.error("Resync failed:", e)
     } finally {
@@ -92,7 +99,23 @@ export function TransactionsPage() {
     }
   }
 
+
   const allPayments: Payment[] = (data as { payments?: Payment[] })?.payments ?? []
+
+  // Auto-match pending payments when wallet data becomes available
+  const hasAutoMatched = useRef(false)
+  useEffect(() => {
+    if (!walletReady || syncing || !allPayments.length || hasAutoMatched.current) return
+    const hasPending = allPayments.some((p) => p.status === "PENDING")
+    if (!hasPending) return
+
+    hasAutoMatched.current = true
+    matchPayments().then((count) => {
+      if (count > 0) {
+        console.log(`[transactions] Auto-matched ${count} payments`)
+      }
+    })
+  }, [walletReady, syncing, allPayments])
 
   const payrollNames = useMemo(
     () => [...new Set(allPayments.map((p) => p.payroll.name))],
@@ -101,12 +124,14 @@ export function TransactionsPage() {
 
   const payments = useMemo(
     () =>
-      allPayments.filter((p) => {
-        if (statusFilter !== "all" && p.status !== statusFilter) return false
-        if (payrollFilter !== "all" && p.payroll.name !== payrollFilter)
-          return false
-        return true
-      }),
+      allPayments
+        .filter((p) => {
+          if (statusFilter !== "all" && p.status !== statusFilter) return false
+          if (payrollFilter !== "all" && p.payroll.name !== payrollFilter)
+            return false
+          return true
+        })
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
     [allPayments, statusFilter, payrollFilter]
   )
 
@@ -178,11 +203,6 @@ export function TransactionsPage() {
               <RefreshCw className={`mr-1.5 size-4 ${resyncing ? "animate-spin" : ""}`} />
               {resyncing ? "Syncing..." : "Resync Wallet"}
             </Button>
-          )}
-          {matchCount !== null && matchCount > 0 && (
-            <span className="text-sm font-medium text-green-600">
-              {matchCount} payment{matchCount !== 1 ? "s" : ""} matched
-            </span>
           )}
           <Button variant="outline" size="icon" className="h-10 w-10">
             <Download className="size-4" />
