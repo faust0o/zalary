@@ -14,11 +14,9 @@ import {
 import { useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { DisburseModal } from "../components/disburse-modal/disburse-modal"
-import {
-  PayrollsDocument,
-  ZecBalanceDocument,
-} from "../graphql/__generated__/graphql"
+import { PayrollsDocument } from "../graphql/__generated__/graphql"
 import { useTitle } from "../hooks/use-title"
+import { useZcashWallet } from "../hooks/use-zcash-wallet"
 import { useZecPrice } from "../hooks/use-zec-price"
 
 function getNextDueDate(schedule: string, customDays?: number | null): Date {
@@ -79,14 +77,14 @@ export function PayrollsPage() {
   useTitle("Payrolls")
   const navigate = useNavigate()
   const { data, loading } = useQuery(PayrollsDocument)
-  const { data: balanceData } = useQuery(ZecBalanceDocument)
+  const { balance: walletBalance } = useZcashWallet()
   const [disburseOpen, setDisburseOpen] = useState(false)
   const [disbursePayrollId, setDisbursePayrollId] = useState<string | null>(
     null
   )
 
   const payrolls: Payroll[] = (data as { payrolls?: Payroll[] })?.payrolls ?? []
-  const zecBalance = balanceData?.zecBalance?.available ?? 0
+  const zecBalance = walletBalance?.total ?? 0
 
   const totalSettlementUsd = useMemo(
     () =>
