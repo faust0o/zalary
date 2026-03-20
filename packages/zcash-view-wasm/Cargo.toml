@@ -1,0 +1,65 @@
+[package]
+name = "zcash-view-wasm"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# All zcash crates from the same git source to avoid version conflicts.
+# zcash_client_memory is not on crates.io, so we pull everything from git.
+zcash_client_backend = { git = "https://github.com/zcash/librustzcash", rev = "9e1b175e0c2f25efd32e243f1d19e41f1e55011d", default-features = false, features = [
+    "sync",
+    "orchard",
+] }
+zcash_client_memory = { git = "https://github.com/zcash/librustzcash", rev = "9e1b175e0c2f25efd32e243f1d19e41f1e55011d", default-features = false, features = ["orchard"] }
+zcash_keys = { git = "https://github.com/zcash/librustzcash", rev = "9e1b175e0c2f25efd32e243f1d19e41f1e55011d", default-features = false, features = ["orchard"] }
+zcash_primitives = { git = "https://github.com/zcash/librustzcash", rev = "9e1b175e0c2f25efd32e243f1d19e41f1e55011d", default-features = false }
+zcash_protocol = { git = "https://github.com/zcash/librustzcash", rev = "9e1b175e0c2f25efd32e243f1d19e41f1e55011d" }
+zcash_address = { git = "https://github.com/zcash/librustzcash", rev = "9e1b175e0c2f25efd32e243f1d19e41f1e55011d" }
+
+# WASM + JS interop
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+web-sys = { version = "0.3", features = ["console"] }
+serde = { version = "1", features = ["derive"] }
+serde-wasm-bindgen = "0.6"
+
+# gRPC-web transport for lightwalletd in browser
+tonic-web-wasm-client = "0.9"
+tonic = { version = "0.12", default-features = false, features = ["codegen", "prost"] }
+prost = "0.14"
+
+# Serialization for IndexedDB persistence
+bincode = "1"
+
+# Hex encoding for txids
+hex = "0.4"
+
+# Async stream utilities (for gRPC streaming responses)
+futures-util = "0.3"
+
+# Async trait for BlockCache impl
+async-trait = "0.1"
+
+# Sapling crypto (for Node type in subtree roots)
+sapling-crypto = { version = "0.6", default-features = false }
+
+# Logging and error handling
+console_error_panic_hook = "0.1"
+
+# WASM compatibility
+getrandom = { version = "0.2", features = ["js"] }
+
+# Patch halo2_proofs to fix compilation on current stable Rust
+# (crates.io v0.3.2 has broken multicore.rs for non-rayon/WASM targets)
+[patch.crates-io]
+halo2_proofs = { git = "https://github.com/zcash/halo2", rev = "32a8758" }
+halo2_gadgets = { git = "https://github.com/zcash/halo2", rev = "32a8758" }
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
