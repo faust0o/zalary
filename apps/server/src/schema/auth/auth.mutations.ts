@@ -1,4 +1,4 @@
-import { mutationField, nonNull, stringArg } from "nexus"
+import { intArg, mutationField, nonNull, stringArg } from "nexus"
 
 export const registerUser = mutationField("registerUser", {
   type: nonNull("User"),
@@ -27,6 +27,7 @@ export const updateUser = mutationField("updateUser", {
   type: nonNull("User"),
   args: {
     zcashViewingKey: stringArg(),
+    walletBirthdayHeight: intArg(),
   },
   async resolve(_parent, args, ctx) {
     if (!ctx.userId) throw new Error("Not authenticated")
@@ -35,6 +36,9 @@ export const updateUser = mutationField("updateUser", {
       data: {
         ...(args.zcashViewingKey !== undefined
           ? { zcashViewingKey: args.zcashViewingKey }
+          : {}),
+        ...(args.walletBirthdayHeight !== undefined
+          ? { walletBirthdayHeight: args.walletBirthdayHeight }
           : {}),
       },
     })

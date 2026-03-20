@@ -6,6 +6,7 @@ export const User = objectType({
     t.nonNull.id("id")
     t.nonNull.string("email")
     t.string("zcashViewingKey")
+    t.int("walletBirthdayHeight")
     t.nonNull.list.nonNull.field("employees", {
       type: "Employee",
       resolve(parent, _args, ctx) {
