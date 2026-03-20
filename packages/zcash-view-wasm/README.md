@@ -70,14 +70,46 @@ const restored = await ZcashViewWallet.fromBytes(
 
 ## Building from source
 
-Requires nightly Rust, `wasm-pack`, and Homebrew LLVM (for cross-compiling the secp256k1 C code):
+### Prerequisites
+
+- **Rust nightly** with `wasm32-unknown-unknown` target and `rust-src` component (pinned in `rust-toolchain.toml`)
+- **wasm-pack** (`cargo install wasm-pack`)
+- **Homebrew LLVM** (`brew install llvm`) — provides a clang that can cross-compile C to wasm32 (needed by `secp256k1-sys`)
+
+### Quick build
 
 ```bash
-# dev build
+# dev build (fast, unoptimized, large .wasm)
 ./build.sh
 
-# release build (smaller wasm, slower to compile)
+# release build (slow, optimized, ~2MB .wasm)
 ./build.sh --release
+```
+
+### Manual build
+
+The `.cargo/config.toml` sets the required flags (`+atomics`, `+bulk-memory`, `+mutable-globals`, `--shared-memory`, `--import-memory`). The only extra step is telling `cc` where to find the LLVM clang for the wasm32 target:
+
+```bash
+export CC_wasm32_unknown_unknown=/opt/homebrew/opt/llvm/bin/clang
+export AR_wasm32_unknown_unknown=/opt/homebrew/opt/llvm/bin/llvm-ar
+
+wasm-pack build --target web --release
+```
+
+`--target web` is required (not `bundler`) because `wasm-bindgen-rayon` needs access to the `WebAssembly.Module` for spawning worker threads.
+
+### Vite integration
+
+When consuming this package in a Vite app, exclude it from dependency pre-bundling so the `snippets/workerHelpers.js` file (used by `wasm-bindgen-rayon`) is served correctly:
+
+```ts
+// vite.config.ts
+export default defineConfig({
+  optimizeDeps: {
+    exclude: ["zcash-view-wasm"],
+  },
+});
 ```
 
 ## Publishing
