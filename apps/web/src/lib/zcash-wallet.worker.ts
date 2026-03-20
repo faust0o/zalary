@@ -10,9 +10,13 @@ console.log(
   (self as unknown as { crossOriginIsolated: boolean }).crossOriginIsolated
 )
 
-import type { ZcashViewWallet as ZcashViewWalletType } from "zcash-view-wasm"
+// Import the WASM module directly (--target web output, not through vite-plugin-wasm)
+// @ts-expect-error -- raw URL import for the web target JS wrapper
+import initWasm, { ZcashViewWallet, initThreadPool } from "zcash-view-wasm/zcash_view_wasm.js"
+// Import the WASM binary URL so Vite resolves it correctly
+import wasmUrl from "zcash-view-wasm/zcash_view_wasm_bg.wasm?url"
 
-let wallet: InstanceType<typeof ZcashViewWalletType> | null = null
+let wallet: InstanceType<typeof ZcashViewWallet> | null = null
 
 type Request =
   | { id: number; type: "create"; lightwalletdUrl: string; ufvk: string; birthdayHeight: number }
@@ -23,14 +27,23 @@ type Request =
   | { id: number; type: "toBytes" }
   | { id: number; type: "getChainTip" }
 
-// Sequential message queue to prevent concurrent WASM access
+// Sequential message queue
 const queue: Request[] = []
 let processing = false
+let wasmReady = false
+
+async function ensureWasm() {
+  if (!wasmReady) {
+    await initWasm({ module_or_path: wasmUrl })
+    await initThreadPool(navigator.hardwareConcurrency || 4)
+    wasmReady = true
+    console.log("[zcash-worker] WASM + thread pool initialized")
+  }
+}
 
 async function processQueue() {
   if (processing) return
   processing = true
-
   while (queue.length > 0) {
     const msg = queue.shift()!
     try {
@@ -40,7 +53,6 @@ async function processQueue() {
       self.postMessage({ id: msg.id, error: message })
     }
   }
-
   processing = false
 }
 
@@ -50,10 +62,11 @@ self.onmessage = (e: MessageEvent<Request>) => {
 }
 
 async function handleMessage(msg: Request) {
+  await ensureWasm()
+
   switch (msg.type) {
     case "create": {
-      const wasm = await import("zcash-view-wasm")
-      wallet = await wasm.ZcashViewWallet.create(
+      wallet = await ZcashViewWallet.create(
         msg.lightwalletdUrl,
         msg.ufvk,
         BigInt(msg.birthdayHeight)
@@ -63,8 +76,7 @@ async function handleMessage(msg: Request) {
     }
 
     case "fromBytes": {
-      const wasm = await import("zcash-view-wasm")
-      wallet = await wasm.ZcashViewWallet.fromBytes(
+      wallet = await ZcashViewWallet.fromBytes(
         msg.lightwalletdUrl,
         msg.savedState
       )
@@ -100,7 +112,8 @@ async function handleMessage(msg: Request) {
     case "toBytes": {
       if (!wallet) throw new Error("Wallet not initialized")
       const bytes = wallet.toBytes()
-      self.postMessage({ id: msg.id, result: bytes }, [bytes.buffer])
+      // Transfer the buffer to avoid copying
+      self.postMessage({ id: msg.id, result: bytes })
       break
     }
 

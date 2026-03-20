@@ -101,11 +101,11 @@ export function ZcashWalletProvider({
     setState((s) => ({ ...s, syncing: true }))
 
     try {
-      const summary = await syncWallet((scannedHeight, chainTipHeight) => {
+      const summary = await syncWallet((blocksScanned, totalToScan) => {
         setState((s) => ({
           ...s,
-          lastSyncedHeight: scannedHeight,
-          chainTipHeight: chainTipHeight,
+          lastSyncedHeight: blocksScanned,
+          chainTipHeight: totalToScan,
         }))
       })
       setState((s) => ({

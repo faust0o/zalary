@@ -16,6 +16,16 @@ export default defineConfig({
       ),
     },
   },
-  // No COOP/COEP needed — WASM runs without atomics (single-threaded).
-  // Blocks are scanned one at a time to avoid crossbeam_channel deadlocks.
+  // Required for SharedArrayBuffer (WASM atomics for crossbeam_channel batch scanning).
+  server: {
+    headers: {
+      "Cross-Origin-Opener-Policy": "same-origin",
+      "Cross-Origin-Embedder-Policy": "credentialless",
+    },
+  },
+  // Exclude zcash-view-wasm from dep pre-bundling — it contains worker helper
+  // snippets that must be served as separate files (wasm-bindgen-rayon workers).
+  optimizeDeps: {
+    exclude: ["zcash-view-wasm"],
+  },
 })
