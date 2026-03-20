@@ -78,6 +78,10 @@ export const deletePayroll = mutationField("deletePayroll", {
     })
     if (!payroll) throw new Error("Payroll not found")
 
+    await ctx.prisma.payment.deleteMany({ where: { payrollId: args.id } })
+    await ctx.prisma.payrollRun.deleteMany({ where: { payrollId: args.id } })
+    await ctx.prisma.payrollEmployee.deleteMany({ where: { payrollId: args.id } })
+
     return ctx.prisma.payroll.delete({ where: { id: args.id } })
   },
 })
