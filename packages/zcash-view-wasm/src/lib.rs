@@ -330,6 +330,15 @@ impl ZcashViewWallet {
         Ok(serde_wasm_bindgen::to_value(&balance)?)
     }
 
+    /// Detect outgoing transactions from a view-only wallet.
+    ///
+    /// Since `sent_notes` is only populated when the wallet creates a transaction
+    /// itself, a view-only wallet must detect spends via nullifier tracking:
+    ///
+    /// 1. `received_note_spends` maps spent note IDs → spending tx IDs
+    /// 2. Sum up the value of all spent received notes per spending tx
+    /// 3. Subtract change notes (`is_change = true`) received in the same tx
+    /// 4. The difference (minus fee) is the net amount sent
     #[wasm_bindgen(js_name = "getSentTransactions")]
     pub fn get_sent_transactions(&self) -> Result<JsValue, JsError> {
         use prost::Message;
@@ -343,47 +352,86 @@ impl ZcashViewWallet {
         let wallet_proto = proto::MemoryWallet::decode(&buf[..])
             .map_err(|e| JsError::new(&format!("Failed to decode proto: {:?}", e)))?;
 
-        let mut tx_heights: HashMap<Vec<u8>, Option<u32>> = HashMap::new();
+        // Build tx_id → (mined_height, block_time) from tx_table and blocks
+        let mut tx_meta: HashMap<Vec<u8>, (Option<u32>, u32)> = HashMap::new();
         for record in &wallet_proto.tx_table {
-            if let Some(ref tx_id) = record.tx_id {
-                if let Some(ref entry) = record.tx_entry {
-                    tx_heights.insert(tx_id.hash.clone(), entry.mined_height);
+            if let (Some(ref tx_id), Some(ref entry)) = (&record.tx_id, &record.tx_entry) {
+                tx_meta.insert(tx_id.hash.clone(), (entry.mined_height, 0));
+            }
+        }
+        // Add block_time from wallet blocks
+        let mut height_to_time: HashMap<u32, u32> = HashMap::new();
+        for block in &wallet_proto.blocks {
+            height_to_time.insert(block.height, block.block_time);
+        }
+        for (_txid, meta) in tx_meta.iter_mut() {
+            if let Some(h) = meta.0 {
+                if let Some(&bt) = height_to_time.get(&h) {
+                    meta.1 = bt;
                 }
             }
         }
 
-        let mut tx_map: HashMap<Vec<u8>, (u64, Option<String>, Option<u32>)> = HashMap::new();
-        for record in &wallet_proto.sent_notes {
-            if let (Some(ref note_id), Some(ref sent_note)) = (&record.sent_note_id, &record.sent_note) {
-                let txid_bytes = match &note_id.tx_id {
-                    Some(id) => &id.hash,
-                    None => continue,
-                };
-                let entry = tx_map
-                    .entry(txid_bytes.clone())
-                    .or_insert((0, None, tx_heights.get(txid_bytes).copied().flatten()));
-                entry.0 += sent_note.value;
-                if entry.1.is_none() && !sent_note.memo.is_empty() {
-                    if let Ok(text) = std::str::from_utf8(&sent_note.memo) {
-                        let trimmed = text.trim_end_matches('\0').trim();
-                        if !trimmed.is_empty() {
-                            entry.1 = Some(trimmed.to_string());
-                        }
-                    }
+        // Index received notes by note_id key (pool, tx_id, output_index) → value
+        let mut received_values: HashMap<(i32, Vec<u8>, u32), u64> = HashMap::new();
+        for note in &wallet_proto.received_note_table {
+            if let Some(ref note_id) = note.note_id {
+                if let Some(ref tx_id) = note_id.tx_id {
+                    let key = (note_id.pool, tx_id.hash.clone(), note_id.output_index);
+                    let value = note.note.as_ref().map(|n| n.value).unwrap_or(0);
+                    received_values.insert(key, value);
                 }
             }
         }
 
-        let mut txs: Vec<types::SentTransaction> = tx_map
-            .into_iter()
-            .map(|(txid_bytes, (value, memo, mined_height))| types::SentTransaction {
-                txid: hex::encode(&txid_bytes),
-                amount_zec: types::u_zatoshis_to_zec(value),
-                memo,
+        // Track per-spending-tx: total value of spent notes
+        // spent_tx → total_spent_value
+        let mut spent_per_tx: HashMap<Vec<u8>, u64> = HashMap::new();
+        for spend in &wallet_proto.received_note_spends {
+            if let (Some(ref note_id), Some(ref spending_tx_id)) = (&spend.note_id, &spend.tx_id) {
+                let note_key = (
+                    note_id.pool,
+                    note_id.tx_id.as_ref().map(|t| t.hash.clone()).unwrap_or_default(),
+                    note_id.output_index,
+                );
+                if let Some(&value) = received_values.get(&note_key) {
+                    *spent_per_tx.entry(spending_tx_id.hash.clone()).or_insert(0) += value;
+                }
+            }
+        }
+
+        // Track per-tx: total change received back
+        let mut change_per_tx: HashMap<Vec<u8>, u64> = HashMap::new();
+        for note in &wallet_proto.received_note_table {
+            if note.is_change {
+                if let Some(ref tx_id) = note.tx_id {
+                    let value = note.note.as_ref().map(|n| n.value).unwrap_or(0);
+                    *change_per_tx.entry(tx_id.hash.clone()).or_insert(0) += value;
+                }
+            }
+        }
+
+        // Build sent transactions: net sent = spent - change
+        let mut txs: Vec<types::SentTransaction> = Vec::new();
+        for (txid_bytes, total_spent) in &spent_per_tx {
+            let change = change_per_tx.get(txid_bytes).copied().unwrap_or(0);
+            if total_spent <= &change {
+                continue; // No net outflow (e.g. self-send or shielding)
+            }
+            let net_sent = total_spent - change;
+            let (mined_height, block_time) = tx_meta
+                .get(txid_bytes)
+                .copied()
+                .unwrap_or((None, 0));
+
+            txs.push(types::SentTransaction {
+                txid: hex::encode(txid_bytes),
+                amount_zec: types::u_zatoshis_to_zec(net_sent),
+                memo: None, // Sender can't decrypt recipient's memo
                 block_height: mined_height.map(|h| h as u64),
-                timestamp: mined_height.map(|h| h as u64).unwrap_or(0),
-            })
-            .collect();
+                timestamp: block_time as u64,
+            });
+        }
         txs.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
 
         console_log!("[zcash-wallet] Found {} sent transactions", txs.len());

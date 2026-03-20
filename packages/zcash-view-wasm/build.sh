@@ -12,7 +12,7 @@ export AR_wasm32_unknown_unknown=/opt/homebrew/opt/llvm/bin/llvm-ar
 
 MODE="${1:---dev}"
 
-wasm-pack build --target bundler "$MODE"
+wasm-pack build --target web "$MODE"
 
 echo "Build complete. Output in pkg/"
 echo "WASM size: $(du -sh pkg/*.wasm | cut -f1)"
