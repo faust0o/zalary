@@ -47,7 +47,21 @@ export const PayrollRun = objectType({
   name: "PayrollRun",
   definition(t) {
     t.nonNull.id("id")
-    t.nonNull.field("status", { type: "PayrollRunStatus" })
+    t.nonNull.field("status", {
+      type: "PayrollRunStatus",
+      async resolve(parent, _args, ctx) {
+        const pending = await ctx.prisma.payment.count({
+          where: { runId: parent.id, status: "PENDING" },
+        })
+        if (pending === 0) return "COMPLETED"
+        // At least one payment exists and some are done
+        const total = await ctx.prisma.payment.count({
+          where: { runId: parent.id },
+        })
+        if (total > pending) return "IN_PROGRESS"
+        return "PENDING"
+      },
+    })
     t.nonNull.float("zecPriceUsd")
     t.nonNull.field("payroll", {
       type: "Payroll",
