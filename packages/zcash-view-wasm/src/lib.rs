@@ -45,6 +45,8 @@ macro_rules! console_log {
     }
 }
 
+pub use wasm_bindgen_rayon::init_thread_pool;
+
 #[wasm_bindgen(start)]
 pub fn init() {
     console_error_panic_hook::set_once();
@@ -244,6 +246,16 @@ impl ZcashViewWallet {
         console_log!("[zcash-wallet] Subtree roots updated");
 
         // Step 3: Scan loop
+        // Calculate total blocks to scan for progress reporting
+        let birthday_height = self.db.get_wallet_birthday()
+            .map_err(|e| err(format!("{e:?}")))?
+            .unwrap_or(tip_height);
+        let total_to_scan = u64::from(tip_height).saturating_sub(u64::from(birthday_height));
+        let mut total_scanned: u64 = 0;
+
+        // Report initial progress
+        let _ = on_progress.call2(&this_js, &JsValue::from(0.0f64), &JsValue::from(total_to_scan as f64));
+
         let start_time = js_sys::Date::now();
         let mut iteration = 0u32;
         loop {
@@ -284,12 +296,13 @@ impl ZcashViewWallet {
                 self.download_and_scan(&scan_range).await?;
                 made_progress = true;
 
-                // Report progress
-                let scanned = self.db.block_fully_scanned()
-                    .map_err(|e| err(format!("{e:?}")))?
-                    .map(|m| u64::from(m.block_height()))
-                    .unwrap_or(0);
-                let _ = on_progress.call2(&this_js, &JsValue::from(scanned as f64), &JsValue::from(tip as f64));
+                // Report progress based on blocks scanned so far
+                total_scanned += scan_range.len() as u64;
+                let _ = on_progress.call2(
+                    &this_js,
+                    &JsValue::from(total_scanned as f64),
+                    &JsValue::from(total_to_scan as f64),
+                );
 
                 // Re-check if high priority ranges appeared
                 let new_ranges = self.db.suggest_scan_ranges().map_err(|e| err(format!("{e:?}")))?;

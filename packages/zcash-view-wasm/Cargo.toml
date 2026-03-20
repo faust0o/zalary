@@ -44,6 +44,9 @@ futures-util = "0.3"
 # Async trait for BlockCache impl
 async-trait = "0.1"
 
+# Shared memory + thread pool for WASM (needed for crossbeam_channel in BatchRunner)
+wasm-bindgen-rayon = "1.2"
+
 # Sapling crypto (for Node type in subtree roots)
 sapling-crypto = { version = "0.6", default-features = false }
 
