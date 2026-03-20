@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   Banknote,
   Calendar,
+  Check,
   Pencil,
   Plus,
   Users,
@@ -61,6 +62,17 @@ interface Payroll {
     employeeId: string
     employee: { id: string; name: string; salaryAmount: number }
   }[]
+  runs: {
+    id: string
+    status: string
+    createdAt: string
+  }[]
+}
+
+/** A payroll is "completed" for the current period if its most recent run is COMPLETED. */
+function isPayrollCompleted(payroll: Payroll): boolean {
+  if (payroll.runs.length === 0) return false
+  return payroll.runs[0].status === "COMPLETED"
 }
 
 export function PayrollsPage() {
@@ -101,6 +113,15 @@ export function PayrollsPage() {
     payrolls.forEach((p) => p.employees.forEach((pe) => ids.add(pe.employeeId)))
     return ids.size
   }, [payrolls])
+
+  const pendingPayrolls = useMemo(
+    () => payrolls.filter((p) => !isPayrollCompleted(p)),
+    [payrolls]
+  )
+  const completedPayrolls = useMemo(
+    () => payrolls.filter((p) => isPayrollCompleted(p)),
+    [payrolls]
+  )
 
   return (
     <div className="space-y-8">
@@ -179,69 +200,134 @@ export function PayrollsPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-3 gap-4">
-          {payrolls.map((payroll) => {
-            const totalUsd = payroll.employees.reduce(
-              (sum, pe) => sum + pe.employee.salaryAmount,
-              0
-            )
-            return (
-              <Card
-                key={payroll.id}
-                className="transition-border cursor-pointer py-0 hover:border-black"
-                onClick={() => {
-                  setDisbursePayrollId(payroll.id)
-                  setDisburseOpen(true)
-                }}
-              >
-                <CardContent className="flex h-full flex-col justify-between p-0">
-                  <div className="px-5 pt-5">
-                    <p className="text-3xl font-light">{payroll.name}</p>
-                    {(() => {
-                      const dueDate = getNextDueDate(
-                        payroll.schedule,
-                        payroll.customDays
-                      )
-                      const diffDays = Math.ceil(
-                        (dueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-                      )
-                      const urgent = diffDays < 7
-                      return (
-                        <p
-                          className={`mt-2 flex items-center gap-1.5 text-sm ${urgent ? "font-medium text-primary" : "text-muted-foreground"}`}
-                        >
-                          {urgent ? (
-                            <AlertTriangle className="size-3.5" />
-                          ) : (
-                            <Calendar className="size-3.5" />
-                          )}
-                          Due {formatDueDate(dueDate)}
-                        </p>
-                      )
-                    })()}
-                  </div>
-                  <div className="mt-6 flex items-center justify-between border-t text-sm text-muted-foreground">
-                    <span className="flex-1 text-center">${totalUsd.toLocaleString()}</span>
-                    <Separator orientation="vertical" className="h-8" />
-                    <span className="flex-1 flex justify-center items-center gap-1">
-                      {payroll.employees.length} <Users className="size-3.5" />
-                    </span>
-                    <Separator orientation="vertical" className="h-8" />
-                    <button
-                      className="hover:bg-muted flex-1 flex justify-center items-center h-full p-0 text-muted-foreground"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        navigate(`/payrolls/${payroll.id}`)
+        <>
+          {pendingPayrolls.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">
+                Pending
+              </h3>
+              <div className="grid grid-cols-3 gap-4">
+                {pendingPayrolls.map((payroll) => {
+                  const totalUsd = payroll.employees.reduce(
+                    (sum, pe) => sum + pe.employee.salaryAmount,
+                    0
+                  )
+                  const dueDate = getNextDueDate(payroll.schedule, payroll.customDays)
+                  const diffDays = Math.ceil(
+                    (dueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+                  )
+                  const urgent = diffDays < 7
+                  return (
+                    <Card
+                      key={payroll.id}
+                      className="transition-border cursor-pointer py-0 hover:border-black"
+                      onClick={() => {
+                        setDisbursePayrollId(payroll.id)
+                        setDisburseOpen(true)
                       }}
                     >
-                      <Pencil className="size-3.5" />
-                    </button>
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
+                      <CardContent className="flex h-full flex-col justify-between p-0">
+                        <div className="px-5 pt-5">
+                          <p className="text-3xl font-light">{payroll.name}</p>
+                          <p
+                            className={`mt-2 flex items-center gap-1.5 text-sm ${urgent ? "font-medium text-primary" : "text-muted-foreground"}`}
+                          >
+                            {urgent ? (
+                              <AlertTriangle className="size-3.5" />
+                            ) : (
+                              <Calendar className="size-3.5" />
+                            )}
+                            Due {formatDueDate(dueDate)}
+                          </p>
+                        </div>
+                        <div className="mt-6 flex items-center justify-between border-t text-sm text-muted-foreground">
+                          <span className="flex-1 text-center">${totalUsd.toLocaleString()}</span>
+                          <Separator orientation="vertical" className="h-8" />
+                          <span className="flex-1 flex justify-center items-center gap-1">
+                            {payroll.employees.length} <Users className="size-3.5" />
+                          </span>
+                          <Separator orientation="vertical" className="h-8" />
+                          <button
+                            className="hover:bg-muted flex-1 flex justify-center items-center h-full p-0 text-muted-foreground"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              navigate(`/payrolls/${payroll.id}`)
+                            }}
+                          >
+                            <Pencil className="size-3.5" />
+                          </button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {completedPayrolls.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">
+                Completed
+              </h3>
+              <div className="grid grid-cols-3 gap-4">
+                {completedPayrolls.map((payroll) => {
+                  const totalUsd = payroll.employees.reduce(
+                    (sum, pe) => sum + pe.employee.salaryAmount,
+                    0
+                  )
+                  // Advance by one period since this cycle is already paid
+                  const nextDue = getNextDueDate(payroll.schedule, payroll.customDays)
+                  const dueDate = new Date(nextDue)
+                  switch (payroll.schedule) {
+                    case "EVERY_TWO_WEEKS":
+                      dueDate.setDate(dueDate.getDate() + 14)
+                      break
+                    case "EVERY_MONTH":
+                      dueDate.setMonth(dueDate.getMonth() + 1)
+                      break
+                    case "EVERY_X_DAYS":
+                      dueDate.setDate(dueDate.getDate() + (payroll.customDays ?? 30))
+                      break
+                  }
+                  return (
+                    <Card
+                      key={payroll.id}
+                      className="py-0 opacity-75"
+                    >
+                      <CardContent className="flex h-full flex-col justify-between p-0">
+                        <div className="px-5 pt-5">
+                          <p className="text-3xl font-light">{payroll.name}</p>
+                          <p className="mt-2 flex items-center gap-1.5 text-sm text-green-600">
+                            <Check className="size-3.5" />
+                            Due again {formatDueDate(dueDate)}
+                          </p>
+                        </div>
+                        <div className="mt-6 flex items-center justify-between border-t text-sm text-muted-foreground">
+                          <span className="flex-1 text-center">${totalUsd.toLocaleString()}</span>
+                          <Separator orientation="vertical" className="h-8" />
+                          <span className="flex-1 flex justify-center items-center gap-1">
+                            {payroll.employees.length} <Users className="size-3.5" />
+                          </span>
+                          <Separator orientation="vertical" className="h-8" />
+                          <button
+                            className="hover:bg-muted flex-1 flex justify-center items-center h-full p-0 text-muted-foreground"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              navigate(`/payrolls/${payroll.id}`)
+                            }}
+                          >
+                            <Pencil className="size-3.5" />
+                          </button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       <DisburseModal

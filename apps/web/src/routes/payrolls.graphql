@@ -12,6 +12,11 @@ query Payrolls {
         salaryAmount
       }
     }
+    runs {
+      id
+      status
+      createdAt
+    }
   }
 }
 
