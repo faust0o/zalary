@@ -4,7 +4,7 @@ import {
   SidebarProvider,
 } from "@workspace/ui/components/sidebar"
 import { TooltipProvider } from "@workspace/ui/components/tooltip"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { Navigate, Outlet, useSearchParams } from "react-router-dom"
 import { AppSidebar } from "../components/app-sidebar"
 import { OnboardingModal } from "../components/onboarding-modal"
@@ -17,15 +17,11 @@ export function Layout() {
   const { data: meData } = useQuery(MeLayoutDocument, { skip: !user })
   const [searchParams] = useSearchParams()
   const fromRegistration = searchParams.get("onboarding") === "1"
-  const [onboardingOpen, setOnboardingOpen] = useState(false)
+  const [onboardingDismissed, setOnboardingDismissed] = useState(false)
 
-  useEffect(() => {
-    if (fromRegistration) {
-      setOnboardingOpen(true)
-    } else if (meData?.me && (!meData.me.zcashViewingKey || !meData.me.walletBirthdayHeight)) {
-      setOnboardingOpen(true)
-    }
-  }, [meData, fromRegistration])
+  const needsOnboarding = fromRegistration ||
+    (meData?.me != null && !meData.me.zcashViewingKey)
+  const onboardingOpen = needsOnboarding && !onboardingDismissed
 
   if (loading) {
     return (
@@ -56,7 +52,7 @@ export function Layout() {
           </SidebarInset>
           <OnboardingModal
             open={onboardingOpen}
-            onOpenChange={setOnboardingOpen}
+            onOpenChange={(open) => { if (!open) setOnboardingDismissed(true) }}
             skipPasskey={fromRegistration}
           />
         </SidebarProvider>
