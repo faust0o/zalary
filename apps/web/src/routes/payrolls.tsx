@@ -2,54 +2,16 @@ import { useQuery } from "@apollo/client/react"
 import { Button } from "@workspace/ui/components/button"
 import { Card, CardContent } from "@workspace/ui/components/card"
 import { Separator } from "@workspace/ui/components/separator"
-import {
-  AlertTriangle,
-  Banknote,
-  Calendar,
-  Check,
-  Pencil,
-  Plus,
-  Users,
-} from "lucide-react"
+import { Banknote, Calendar, Plus } from "lucide-react"
 import { useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { DisburseModal } from "../components/disburse-modal/disburse-modal"
+import { PayrollCard } from "../components/payroll-card"
 import { PayrollsDocument } from "../graphql/__generated__/graphql"
 import { useTitle } from "../hooks/use-title"
 import { useZcashWallet } from "../hooks/use-zcash-wallet"
 import { useZecPrice } from "../hooks/use-zec-price"
-
-function getNextDueDate(schedule: string, customDays?: number | null): Date {
-  const now = new Date()
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-  const next = new Date(startOfMonth)
-
-  switch (schedule) {
-    case "EVERY_TWO_WEEKS":
-      while (next <= now) next.setDate(next.getDate() + 14)
-      break
-    case "EVERY_MONTH":
-      while (next <= now) next.setMonth(next.getMonth() + 1)
-      break
-    case "EVERY_X_DAYS": {
-      const days = customDays ?? 30
-      while (next <= now) next.setDate(next.getDate() + days)
-      break
-    }
-  }
-  return next
-}
-
-function formatDueDate(date: Date): string {
-  const now = new Date()
-  const diffDays = Math.ceil(
-    (date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-  )
-
-  if (diffDays <= 0) return "today"
-  if (diffDays === 1) return "in 1 day"
-  return `in ${diffDays} days`
-}
+import { getNextDueDate } from "../lib/payroll-utils"
 
 interface Payroll {
   id: string
@@ -65,12 +27,6 @@ interface Payroll {
     status: string
     createdAt: string
   }[]
-}
-
-/** A payroll is "completed" for the current period if its most recent run is COMPLETED. */
-function isPayrollCompleted(payroll: Payroll): boolean {
-  if (payroll.runs.length === 0) return false
-  return payroll.runs[0].status === "COMPLETED"
 }
 
 export function PayrollsPage() {
@@ -113,11 +69,21 @@ export function PayrollsPage() {
   }, [payrolls])
 
   const pendingPayrolls = useMemo(
-    () => payrolls.filter((p) => !isPayrollCompleted(p)),
+    () => payrolls.filter((p) => {
+      const lastRun = p.runs[0]
+      if (!lastRun || lastRun.status !== "COMPLETED") return true
+      const nextDue = getNextDueDate(p.schedule, p.customDays, new Date(lastRun.createdAt))
+      return nextDue <= new Date()
+    }),
     [payrolls]
   )
   const completedPayrolls = useMemo(
-    () => payrolls.filter((p) => isPayrollCompleted(p)),
+    () => payrolls.filter((p) => {
+      const lastRun = p.runs[0]
+      if (!lastRun || lastRun.status !== "COMPLETED") return false
+      const nextDue = getNextDueDate(p.schedule, p.customDays, new Date(lastRun.createdAt))
+      return nextDue > new Date()
+    }),
     [payrolls]
   )
 
@@ -206,57 +172,21 @@ export function PayrollsPage() {
               </h3>
               <div className="grid grid-cols-3 gap-4">
                 {pendingPayrolls.map((payroll) => {
-                  const totalUsd = payroll.employees.reduce(
-                    (sum, pe) => sum + pe.employee.salaryAmount,
-                    0
-                  )
-                  const dueDate = getNextDueDate(payroll.schedule, payroll.customDays)
-                  const diffDays = Math.ceil(
-                    (dueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-                  )
-                  const urgent = diffDays < 7
+                  const lastRun = payroll.runs[0]
                   return (
-                    <Card
+                    <PayrollCard
                       key={payroll.id}
-                      className="transition-border cursor-pointer py-0 hover:border-black"
+                      payrollId={payroll.id}
+                      name={payroll.name}
+                      totalUsd={payroll.employees.reduce((sum, pe) => sum + pe.employee.salaryAmount, 0)}
+                      employeeCount={payroll.employees.length}
+                      dueDate={getNextDueDate(payroll.schedule, payroll.customDays, lastRun ? new Date(lastRun.createdAt) : null)}
+                      completed={false}
                       onClick={() => {
                         setDisbursePayrollId(payroll.id)
                         setDisburseOpen(true)
                       }}
-                    >
-                      <CardContent className="flex h-full flex-col justify-between p-0">
-                        <div className="px-5 pt-5">
-                          <p className="text-3xl font-light">{payroll.name}</p>
-                          <p
-                            className={`mt-2 flex items-center gap-1.5 text-sm ${urgent ? "font-medium text-primary" : "text-muted-foreground"}`}
-                          >
-                            {urgent ? (
-                              <AlertTriangle className="size-3.5" />
-                            ) : (
-                              <Calendar className="size-3.5" />
-                            )}
-                            Due {formatDueDate(dueDate)}
-                          </p>
-                        </div>
-                        <div className="mt-6 flex items-center justify-between border-t text-sm text-muted-foreground">
-                          <span className="flex-1 text-center">${totalUsd.toLocaleString()}</span>
-                          <Separator orientation="vertical" className="h-8" />
-                          <span className="flex-1 flex justify-center items-center gap-1">
-                            {payroll.employees.length} <Users className="size-3.5" />
-                          </span>
-                          <Separator orientation="vertical" className="h-8" />
-                          <button
-                            className="hover:bg-muted flex-1 flex justify-center items-center h-full p-0 text-muted-foreground"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              navigate(`/payrolls/${payroll.id}`)
-                            }}
-                          >
-                            <Pencil className="size-3.5" />
-                          </button>
-                        </div>
-                      </CardContent>
-                    </Card>
+                    />
                   )
                 })}
               </div>
@@ -270,56 +200,17 @@ export function PayrollsPage() {
               </h3>
               <div className="grid grid-cols-3 gap-4">
                 {completedPayrolls.map((payroll) => {
-                  const totalUsd = payroll.employees.reduce(
-                    (sum, pe) => sum + pe.employee.salaryAmount,
-                    0
-                  )
-                  // Advance by one period since this cycle is already paid
-                  const nextDue = getNextDueDate(payroll.schedule, payroll.customDays)
-                  const dueDate = new Date(nextDue)
-                  switch (payroll.schedule) {
-                    case "EVERY_TWO_WEEKS":
-                      dueDate.setDate(dueDate.getDate() + 14)
-                      break
-                    case "EVERY_MONTH":
-                      dueDate.setMonth(dueDate.getMonth() + 1)
-                      break
-                    case "EVERY_X_DAYS":
-                      dueDate.setDate(dueDate.getDate() + (payroll.customDays ?? 30))
-                      break
-                  }
+                  const lastRun = payroll.runs[0]
                   return (
-                    <Card
+                    <PayrollCard
                       key={payroll.id}
-                      className="py-0 opacity-75"
-                    >
-                      <CardContent className="flex h-full flex-col justify-between p-0">
-                        <div className="px-5 pt-5">
-                          <p className="text-3xl font-light">{payroll.name}</p>
-                          <p className="mt-2 flex items-center gap-1.5 text-sm text-green-600">
-                            <Check className="size-3.5" />
-                            Due again {formatDueDate(dueDate)}
-                          </p>
-                        </div>
-                        <div className="mt-6 flex items-center justify-between border-t text-sm text-muted-foreground">
-                          <span className="flex-1 text-center">${totalUsd.toLocaleString()}</span>
-                          <Separator orientation="vertical" className="h-8" />
-                          <span className="flex-1 flex justify-center items-center gap-1">
-                            {payroll.employees.length} <Users className="size-3.5" />
-                          </span>
-                          <Separator orientation="vertical" className="h-8" />
-                          <button
-                            className="hover:bg-muted flex-1 flex justify-center items-center h-full p-0 text-muted-foreground"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              navigate(`/payrolls/${payroll.id}`)
-                            }}
-                          >
-                            <Pencil className="size-3.5" />
-                          </button>
-                        </div>
-                      </CardContent>
-                    </Card>
+                      payrollId={payroll.id}
+                      name={payroll.name}
+                      totalUsd={payroll.employees.reduce((sum, pe) => sum + pe.employee.salaryAmount, 0)}
+                      employeeCount={payroll.employees.length}
+                      dueDate={getNextDueDate(payroll.schedule, payroll.customDays, lastRun ? new Date(lastRun.createdAt) : null)}
+                      completed={true}
+                    />
                   )
                 })}
               </div>

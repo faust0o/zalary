@@ -1,5 +1,4 @@
 import { useQuery } from "@apollo/client/react"
-import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import {
   Card,
@@ -13,7 +12,6 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@workspace/ui/components/chart"
-import { toHeaderCase } from "js-convert-case"
 import { useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import {
@@ -24,20 +22,12 @@ import {
   XAxis,
   YAxis,
 } from "recharts"
+import { DisburseModal } from "../components/disburse-modal/disburse-modal"
+import { PayrollCard } from "../components/payroll-card"
 import { DashboardStatsDocument } from "../graphql/__generated__/graphql"
 import { useTitle } from "../hooks/use-title"
 import { formatZecAsUsd, useZecPrice } from "../hooks/use-zec-price"
-
-function relativeDate(dateStr: string, isFuture: boolean): string {
-  const date = new Date(dateStr)
-  const now = new Date()
-  const diffMs = isFuture ? date.getTime() - now.getTime() : now.getTime() - date.getTime()
-  const days = Math.round(diffMs / (1000 * 60 * 60 * 24))
-
-  if (days <= 0) return isFuture ? "Due today" : "Today"
-  if (days === 1) return isFuture ? "Due in 1 day" : "1 day ago"
-  return isFuture ? `Due in ${days} days` : `${days} days ago`
-}
+import { getNextDueDate } from "../lib/payroll-utils"
 
 const chartConfig = {
   monthly: {
@@ -56,8 +46,30 @@ export function DashboardPage() {
   const navigate = useNavigate()
   const { price: zecPrice } = useZecPrice()
   const [chartRange, setChartRange] = useState<"30d" | "6m" | "All">("All")
+  const [disburseOpen, setDisburseOpen] = useState(false)
+  const [disbursePayrollId, setDisbursePayrollId] = useState<string | null>(null)
 
   const stats = data?.dashboardStats
+  const payrolls = data?.payrolls ?? []
+
+  const { pendingPayrolls, completedPayrolls } = useMemo(() => {
+    const pending: typeof payrolls = []
+    const completed: typeof payrolls = []
+    for (const p of payrolls) {
+      const lastRun = p.runs[0]
+      if (!lastRun || lastRun.status !== "COMPLETED") {
+        pending.push(p)
+      } else {
+        const nextDue = getNextDueDate(p.schedule, p.customDays, new Date(lastRun.createdAt))
+        if (nextDue <= new Date()) {
+          pending.push(p)
+        } else {
+          completed.push(p)
+        }
+      }
+    }
+    return { pendingPayrolls: pending, completedPayrolls: completed }
+  }, [payrolls])
 
   const allChartData = useMemo(() => {
     if (!stats?.zecSpentByMonth?.length) return []
@@ -242,38 +254,11 @@ export function DashboardPage() {
         </CardContent>
       </Card>
 
-      {stats?.nextPayrollDue && (
-        <div>
-          <h3 className="mb-4 text-lg font-semibold">Next Payroll Due</h3>
-          <Card
-            className="cursor-pointer py-0 transition-shadow hover:shadow-md"
-            onClick={() => navigate(`/payrolls/${stats.nextPayrollDue!.id}`)}
-          >
-            <CardContent className="flex items-center justify-between p-5">
-              <div>
-                <p className="text-xl font-bold">
-                  {stats.nextPayrollDue.name}
-                </p>
-                <p className="text-muted-foreground mt-1 text-sm">
-                  {relativeDate(stats.nextPayrollDue.dueDate, true)}
-                  {" · "}
-                  {stats.nextPayrollDue.employeeCount} employees
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-2xl font-bold">
-                  ${stats.nextPayrollDue.totalUsd.toLocaleString()}
-                </p>
-                <p className="text-muted-foreground text-xs">Total payout</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
       <div>
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Recent Payouts</h3>
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">
+            Payrolls
+          </h3>
           <Button
             variant="link"
             size="sm"
@@ -285,62 +270,52 @@ export function DashboardPage() {
         </div>
         {loading ? (
           <p className="text-muted-foreground text-sm">Loading...</p>
-        ) : stats?.recentRuns?.length ? (
-          <div className="grid gap-4 md:grid-cols-3">
-            {stats.recentRuns.map(
-              (
-                run: {
-                  id: string
-                  status: string
-                  createdAt: string
-                  payroll: { name: string }
-                  payments: { status: string; amountZec: number }[]
-                },
-                index: number
-              ) => {
-                const opacity = index === 0 ? 1 : index === 1 ? 0.6 : 0.3
-                const totalZec = run.payments.reduce(
-                  (sum: number, p: { amountZec: number }) =>
-                    sum + p.amountZec,
-                  0
-                )
-                return (
-                  <Card
-                    key={run.id}
-                    className="py-0 transition-opacity"
-                    style={{ opacity }}
-                  >
-                    <CardContent className="p-5">
-                      <div className="flex items-start justify-between">
-                        <p className="text-base font-bold">
-                          {run.payroll.name}
-                        </p>
-                        <Badge
-                          variant={
-                            run.status === "COMPLETED" ? "default" : "secondary"
-                          }
-                        >
-                          {toHeaderCase(run.status)}
-                        </Badge>
-                      </div>
-                      <p className="mt-3 font-mono text-lg font-semibold">
-                        {totalZec.toFixed(4)} ZEC
-                      </p>
-                      <p className="text-muted-foreground text-xs">
-                        {run.status === "COMPLETED"
-                          ? `Completed ${relativeDate(run.createdAt, false)}`
-                          : relativeDate(run.createdAt, false)}
-                      </p>
-                    </CardContent>
-                  </Card>
-                )
-              }
-            )}
-          </div>
         ) : (
-          <p className="text-muted-foreground text-sm">No payroll runs yet</p>
+          <div className="grid gap-4 md:grid-cols-3">
+            {pendingPayrolls.map((payroll) => {
+              const lastRun = payroll.runs[0]
+              return (
+                <PayrollCard
+                  key={payroll.id}
+                  payrollId={payroll.id}
+                  name={payroll.name}
+                  totalUsd={payroll.employees.reduce((sum, pe) => sum + pe.employee.salaryAmount, 0)}
+                  employeeCount={payroll.employees.length}
+                  dueDate={getNextDueDate(payroll.schedule, payroll.customDays, lastRun ? new Date(lastRun.createdAt) : null)}
+                  completed={false}
+                  onClick={() => {
+                    setDisbursePayrollId(payroll.id)
+                    setDisburseOpen(true)
+                  }}
+                />
+              )
+            })}
+            {completedPayrolls.map((payroll) => {
+              const lastRun = payroll.runs[0]
+              return (
+                <PayrollCard
+                  key={payroll.id}
+                  payrollId={payroll.id}
+                  name={payroll.name}
+                  totalUsd={payroll.employees.reduce((sum, pe) => sum + pe.employee.salaryAmount, 0)}
+                  employeeCount={payroll.employees.length}
+                  dueDate={getNextDueDate(payroll.schedule, payroll.customDays, lastRun ? new Date(lastRun.createdAt) : null)}
+                  completed={true}
+                />
+              )
+            })}
+          </div>
         )}
       </div>
+
+      <DisburseModal
+        open={disburseOpen}
+        onOpenChange={(open) => {
+          setDisburseOpen(open)
+          if (!open) setDisbursePayrollId(null)
+        }}
+        initialPayrollId={disbursePayrollId}
+      />
     </div>
   )
 }

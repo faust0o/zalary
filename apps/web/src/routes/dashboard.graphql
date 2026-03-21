@@ -4,26 +4,24 @@ query DashboardStats {
       month
       amount
     }
-    nextPayrollDue {
-      id
-      name
-      dueDate
-      employeeCount
-      totalUsd
+  }
+  payrolls {
+    id
+    name
+    schedule
+    customDays
+    employees {
+      employeeId
+      employee {
+        id
+        name
+        salaryAmount
+      }
     }
-    recentRuns {
+    runs {
       id
       status
-      zecPriceUsd
       createdAt
-      completedAt
-      payroll {
-        name
-      }
-      payments {
-        status
-        amountZec
-      }
     }
   }
 }
