@@ -142,7 +142,7 @@ async function main() {
         createdAt: months[i],
         completedAt: new Date(months[i].getTime() + 3600000),
         payments: {
-          create: payrollEmployees.map((pe) => ({
+          create: payrollEmployees.map((pe, j) => ({
             employeeId: pe.employeeId,
             payrollId: payroll.id,
             amountUsd: pe.employee.salaryCurrency === "ZEC"
@@ -151,6 +151,7 @@ async function main() {
             amountZec: pe.employee.salaryCurrency === "ZEC"
               ? pe.employee.salaryAmount
               : pe.employee.salaryAmount / zecPrices[i],
+            memo: `zalary:seed:run${i}:pay${j}`,
             status: "COMPLETED" as const,
             txHash: `tx_${pe.employeeId.substring(0, 8)}_${months[i].toISOString().substring(0, 7)}`,
             createdAt: months[i],
@@ -183,6 +184,7 @@ async function main() {
           amountZec: pe.employee.salaryCurrency === "ZEC"
             ? pe.employee.salaryAmount
             : pe.employee.salaryAmount / 33.0,
+          memo: `zalary:seed:recent:pay${idx}`,
           status: idx === 0 ? ("COMPLETED" as const) : ("SKIPPED" as const),
           txHash: idx === 0 ? `tx_recent_${pe.employeeId.substring(0, 8)}` : null,
           createdAt: new Date("2026-03-10"),
