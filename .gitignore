@@ -23,7 +23,6 @@ coverage
 dist
 
 # Generated
-__generated__
 schema.graphql
 
 # Debug
