@@ -75,11 +75,6 @@ export function LoginPage() {
     setIsSubmitting(true)
     try {
       const tribeUser = await register(email, password)
-      try {
-        await registerPasskey("Zalary")
-      } catch {
-        // Passkey registration is optional, continue anyway
-      }
       await registerUser({
         variables: {
           email,
