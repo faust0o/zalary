@@ -1,14 +1,21 @@
-import express from "express"
-import cors from "cors"
 import { ApolloServer } from "@apollo/server"
+import { ApolloServerPluginLandingPageDisabled } from "@apollo/server/plugin/disabled"
 import { expressMiddleware } from "@as-integrations/express5"
-import { schema } from "./schema/index.js"
+import cors from "cors"
+import express from "express"
 import { createContext } from "./context.js"
+import { schema } from "./schema/index.js"
 
 const app = express()
 const port = process.env.PORT || 4000
 
-const server = new ApolloServer({ schema })
+const isProduction = process.env.NODE_ENV === "production"
+
+const server = new ApolloServer({
+  schema,
+  introspection: !isProduction,
+  plugins: [ApolloServerPluginLandingPageDisabled()],
+})
 
 await server.start()
 
