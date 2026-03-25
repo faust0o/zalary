@@ -15,6 +15,7 @@ const server = new ApolloServer({
   schema,
   introspection: !isProduction,
   plugins: [ApolloServerPluginLandingPageDisabled()],
+  csrfPrevention: false,
 })
 
 await server.start()
