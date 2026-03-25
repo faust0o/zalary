@@ -67,13 +67,7 @@ echo "==> Installing dependencies"
 cd "$REPO_ROOT"
 bun install
 
-# ── Step 3: GraphQL codegen ───────────────────────────────────────
-
-echo "==> Running GraphQL codegen"
-cd "$WEB_APP"
-bun run codegen
-
-# ── Step 4: Build Vite app ────────────────────────────────────────
+# ── Step 3: Build Vite app ────────────────────────────────────────
 
 echo "==> Building web app (Vite)"
 cd "$WEB_APP"
