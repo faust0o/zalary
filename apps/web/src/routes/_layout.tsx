@@ -20,7 +20,7 @@ export function Layout() {
   const [onboardingDismissed, setOnboardingDismissed] = useState(false)
 
   const needsOnboarding = fromRegistration ||
-    (meData?.me != null && !meData.me.zcashViewingKey)
+    (meData?.me != null && (!meData.me.zcashViewingKey || !meData.me.walletBirthdayHeight))
   const onboardingOpen = needsOnboarding && !onboardingDismissed
 
   if (loading) {

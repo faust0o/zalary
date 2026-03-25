@@ -67,7 +67,9 @@ export function ZcashWalletProvider({
 
   // Initialize wallet when UFVK becomes available
   useEffect(() => {
-    if (!ufvk || !birthdayHeightProp || isInitialized()) return
+    if (!ufvk) { console.log("[zcash-wallet] Waiting for viewing key..."); return }
+    if (!birthdayHeightProp) { console.log("[zcash-wallet] Waiting for birthday height..."); return }
+    if (isInitialized()) return
 
     let cancelled = false
 
@@ -92,7 +94,7 @@ export function ZcashWalletProvider({
     return () => {
       cancelled = true
     }
-  }, [ufvk])
+  }, [ufvk, birthdayHeightProp])
 
   const sync = useCallback(async (): Promise<SyncSummary | null> => {
     if (!isInitialized() || syncingRef.current) return null

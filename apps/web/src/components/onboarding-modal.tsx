@@ -108,13 +108,16 @@ export function OnboardingModal({
       setStep("verifying")
 
       // Key is validated via WASM — save it along with birthday height
-      const parsedHeight = birthdayHeight.trim()
-        ? parseInt(birthdayHeight.trim(), 10)
-        : null
+      const parsedHeight = parseInt(birthdayHeight.trim(), 10)
+      if (!parsedHeight || isNaN(parsedHeight)) {
+        setError("Please enter a valid wallet birthday height.")
+        setIsSubmitting(false)
+        return
+      }
       await updateUser({
         variables: {
           zcashViewingKey: key,
-          ...(parsedHeight ? { walletBirthdayHeight: parsedHeight } : {}),
+          walletBirthdayHeight: parsedHeight,
         },
       })
 
@@ -275,7 +278,7 @@ export function OnboardingModal({
 
             <div className="space-y-2">
               <Label htmlFor="birthday-height">
-                Wallet Birthday Height
+                Wallet Birthday Height <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="birthday-height"
@@ -302,6 +305,7 @@ export function OnboardingModal({
               onClick={handleSubmitKey}
               disabled={
                 isSubmitting ||
+                !birthdayHeight.trim() ||
                 (keyInputMode === "viewing-key"
                   ? !viewingKey.trim()
                   : !seedPhrase.trim())
