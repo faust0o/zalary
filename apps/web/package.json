@@ -35,7 +35,7 @@
     "zcash-view-wasm": "file:../../packages/zcash-view-wasm/pkg"
   },
   "engines": {
-    "node": ">=20"
+    "node": "22.x"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
