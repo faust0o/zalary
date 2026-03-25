@@ -6,37 +6,35 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 WASM_CRATE="$REPO_ROOT/packages/zcash-view-wasm"
 WEB_APP="$SCRIPT_DIR"
 
-# ── Prerequisites ──────────────────────────────────────────────────
+# ── Step 1: Build Rust WASM crate (skip if pre-built) ────────────
 
-check_cmd() {
-  if ! command -v "$1" &> /dev/null; then
-    echo "Error: $1 not found. $2"
-    exit 1
+if [ -f "$WASM_CRATE/pkg/zcash_view_wasm.js" ]; then
+  echo "==> WASM pkg/ already exists, skipping Rust build"
+else
+  echo "==> Building zcash-view-wasm (Rust → WASM)"
+
+  check_cmd() {
+    if ! command -v "$1" &> /dev/null; then
+      echo "Error: $1 not found. $2"
+      exit 1
+    fi
+  }
+
+  check_cmd rustup "Install from https://rustup.rs"
+
+  if ! command -v wasm-pack &> /dev/null; then
+    echo "==> Installing wasm-pack"
+    cargo install wasm-pack
   fi
-}
 
-check_cmd rustup "Install from https://rustup.rs"
-check_cmd bun    "Install from https://bun.sh"
+  if ! rustup target list --installed | grep -q wasm32-unknown-unknown; then
+    echo "==> Adding wasm32-unknown-unknown target"
+    rustup target add wasm32-unknown-unknown
+  fi
 
-# Ensure wasm-pack is available
-if ! command -v wasm-pack &> /dev/null; then
-  echo "==> Installing wasm-pack"
-  cargo install wasm-pack
-fi
-
-# Ensure the wasm32 target is installed
-if ! rustup target list --installed | grep -q wasm32-unknown-unknown; then
-  echo "==> Adding wasm32-unknown-unknown target"
-  rustup target add wasm32-unknown-unknown
-fi
-
-# ── WASM clang setup ──────────────────────────────────────────────
-# secp256k1-sys needs a clang that supports wasm32-unknown-unknown.
-# Apple clang does not; detect and use Homebrew LLVM or system clang.
-
-if [ -z "${CC:-}" ]; then
-  if [ "$(uname -s)" = "Darwin" ]; then
-    # macOS: Apple clang lacks WASM support, use Homebrew LLVM
+  # secp256k1-sys needs a clang that supports wasm32-unknown-unknown.
+  # Apple clang does not; detect and use Homebrew LLVM or system clang.
+  if [ -z "${CC:-}" ] && [ "$(uname -s)" = "Darwin" ]; then
     BREW_LLVM=""
     if [ -f /opt/homebrew/opt/llvm/bin/clang ]; then
       BREW_LLVM="/opt/homebrew/opt/llvm"
@@ -53,19 +51,15 @@ if [ -z "${CC:-}" ]; then
       exit 1
     fi
   fi
-  # On Linux, system clang usually supports wasm32 out of the box
+
+  wasm-pack build "$WASM_CRATE" \
+    --target web \
+    --release \
+    --out-dir "$WASM_CRATE/pkg" \
+    --out-name zcash_view_wasm
+
+  echo "==> WASM build complete"
 fi
-
-# ── Step 1: Build Rust WASM crate ─────────────────────────────────
-
-echo "==> Building zcash-view-wasm (Rust → WASM)"
-wasm-pack build "$WASM_CRATE" \
-  --target web \
-  --release \
-  --out-dir "$WASM_CRATE/pkg" \
-  --out-name zcash_view_wasm
-
-echo "==> WASM build complete"
 
 # ── Step 2: Install JS dependencies ──────────────────────────────
 
@@ -86,5 +80,3 @@ cd "$WEB_APP"
 bun run build
 
 echo "==> Build complete: $WEB_APP/dist/"
-echo "    Serve with: cd dist && npx serve"
-echo "    Or:         npx vite preview"
