@@ -25,9 +25,6 @@ use zcash_keys::keys::UnifiedFullViewingKey;
 use zcash_primitives::merkle_tree::HashSer;
 use zcash_protocol::consensus::{self, BlockHeight, MainNetwork, MAIN_NETWORK};
 
-#[cfg(feature = "orchard")]
-use orchard::tree::MerkleHashOrchard;
-
 use sapling_crypto;
 
 use types::{BalanceInfo, SyncSummary};
@@ -37,7 +34,6 @@ const MAX_CHECKPOINTS: usize = 100;
 // deadlocks on WASM without SharedArrayBuffer. We download in larger chunks
 // to reduce gRPC round-trips, then scan each block individually.
 const DOWNLOAD_CHUNK: u32 = 500;
-const SCAN_BATCH: u32 = 1;
 
 macro_rules! console_log {
     ($($t:tt)*) => {
@@ -476,6 +472,7 @@ impl ZcashViewWallet {
         // Orchard
         #[cfg(feature = "orchard")]
         {
+            use orchard::tree::MerkleHashOrchard;
             let mut request = service::GetSubtreeRootsArg::default();
             request.set_shielded_protocol(service::ShieldedProtocol::Orchard);
             let orchard_roots: Vec<zcash_client_backend::data_api::chain::CommitmentTreeRoot<MerkleHashOrchard>> = self.client
@@ -511,7 +508,7 @@ impl ZcashViewWallet {
 
         // Fetch chain state BEFORE the streaming download (gRPC client can stall
         // on unary calls after a streaming response with tonic-web-wasm-client)
-        let mut chain_state = self.download_chain_state(range_start - 1).await?;
+        let chain_state = self.download_chain_state(range_start - 1).await?;
 
         // Download all blocks in one gRPC streaming call
         let mut start_id = service::BlockId::default();

@@ -35,11 +35,6 @@ pub struct SentTransaction {
     pub timestamp: u64,
 }
 
-/// Convert zatoshis (i64) to ZEC (f64)
-pub fn zatoshis_to_zec(zatoshis: i64) -> f64 {
-    zatoshis as f64 / 100_000_000.0
-}
-
 /// Convert zatoshis (u64) to ZEC (f64)
 pub fn u_zatoshis_to_zec(zatoshis: u64) -> f64 {
     zatoshis as f64 / 100_000_000.0

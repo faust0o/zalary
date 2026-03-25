@@ -6,6 +6,10 @@ edition = "2021"
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[features]
+default = ["orchard"]
+orchard = []
+
 [dependencies]
 # All zcash crates from the same git source to avoid version conflicts.
 # zcash_client_memory is not on crates.io, so we pull everything from git.
@@ -49,6 +53,9 @@ wasm-bindgen-rayon = "1.2"
 
 # Sapling crypto (for Node type in subtree roots)
 sapling-crypto = { version = "0.6", default-features = false }
+
+# Orchard (for MerkleHashOrchard in subtree roots)
+orchard = { version = "0.12", default-features = false }
 
 # Logging and error handling
 console_error_panic_hook = "0.1"

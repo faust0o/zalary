@@ -1,0 +1,8 @@
+{
+  "name": "zcash-view-wasm",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "wasm-pack build . --target web --release --out-dir pkg --out-name zcash_view_wasm"
+  }
+}
