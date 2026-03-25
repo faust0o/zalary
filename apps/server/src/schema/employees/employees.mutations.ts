@@ -70,14 +70,14 @@ export const importEmployeesCsv = mutationField("importEmployeesCsv", {
 
     const lines = args.csvContent
       .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0)
+      .map((line: string) => line.trim())
+      .filter((line: string) => line.length > 0)
 
     if (lines.length < 2) {
       throw new Error("CSV must have a header row and at least one data row")
     }
 
-    const header = lines[0].toLowerCase().split(",").map((h) => h.trim())
+    const header = lines[0].toLowerCase().split(",").map((h: string) => h.trim())
     const nameIdx = header.indexOf("name")
     const walletIdx = header.indexOf("walletaddress")
     const salaryIdx = header.indexOf("usdsalary")
@@ -91,7 +91,7 @@ export const importEmployeesCsv = mutationField("importEmployeesCsv", {
 
     const employees: { name: string; title: string | null; walletAddress: string; salaryAmount: number }[] = []
     for (let i = 1; i < lines.length; i++) {
-      const cols = lines[i].split(",").map((c) => c.trim())
+      const cols = lines[i].split(",").map((c: string) => c.trim())
       const name = cols[nameIdx]
       const walletAddress = cols[walletIdx]
       const salaryRaw = cols[salaryIdx]
