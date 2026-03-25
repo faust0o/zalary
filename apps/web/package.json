@@ -34,6 +34,9 @@
     "recharts": "^3.8.0",
     "zcash-view-wasm": "file:../../packages/zcash-view-wasm/pkg"
   },
+  "engines": {
+    "node": ">=20"
+  },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "@graphql-codegen/cli": "^6.2.1",
