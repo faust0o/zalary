@@ -57,6 +57,16 @@ export class ZcashViewWallet {
      */
     getSentTransactions(): any;
     /**
+     * Scan a single chunk of blocks. Returns null if no more ranges to scan,
+     * or { scannedBlocks, lastHeight } if progress was made.
+     */
+    syncOneChunk(): Promise<any>;
+    /**
+     * Prepare the wallet for syncing: fetch chain tip and subtree roots.
+     * Must be called once before calling syncOneChunk in a loop.
+     */
+    syncPrepare(): Promise<any>;
+    /**
      * Sync the wallet step by step with logging and progress reporting.
      */
     syncWithProgress(on_progress: Function): Promise<any>;
@@ -87,6 +97,8 @@ export interface InitOutput {
     readonly zcashviewwallet_getBalance: (a: number) => [number, number, number];
     readonly zcashviewwallet_getChainTip: (a: number) => any;
     readonly zcashviewwallet_getSentTransactions: (a: number) => [number, number, number];
+    readonly zcashviewwallet_syncOneChunk: (a: number) => any;
+    readonly zcashviewwallet_syncPrepare: (a: number) => any;
     readonly zcashviewwallet_syncWithProgress: (a: number, b: any) => any;
     readonly zcashviewwallet_toBytes: (a: number) => [number, number, number, number];
     readonly init: () => void;

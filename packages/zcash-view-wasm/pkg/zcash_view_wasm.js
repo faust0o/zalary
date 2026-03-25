@@ -194,6 +194,24 @@ export class ZcashViewWallet {
         return takeFromExternrefTable0(ret[0]);
     }
     /**
+     * Scan a single chunk of blocks. Returns null if no more ranges to scan,
+     * or { scannedBlocks, lastHeight } if progress was made.
+     * @returns {Promise<any>}
+     */
+    syncOneChunk() {
+        const ret = wasm.zcashviewwallet_syncOneChunk(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * Prepare the wallet for syncing: fetch chain tip and subtree roots.
+     * Must be called once before calling syncOneChunk in a loop.
+     * @returns {Promise<any>}
+     */
+    syncPrepare() {
+        const ret = wasm.zcashviewwallet_syncPrepare(this.__wbg_ptr);
+        return ret;
+    }
+    /**
      * Sync the wallet step by step with logging and progress reporting.
      * @param {Function} on_progress
      * @returns {Promise<any>}
@@ -284,6 +302,13 @@ function __wbg_get_imports(memory) {
         },
         __wbg_String_8564e559799eccda: function(arg0, arg1) {
             const ret = String(arg1);
+            const ptr1 = passStringToWasm0(ret, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+            const len1 = WASM_VECTOR_LEN;
+            getDataViewMemory0().setInt32(arg0 + 4 * 1, len1, true);
+            getDataViewMemory0().setInt32(arg0 + 4 * 0, ptr1, true);
+        },
+        __wbg___wbindgen_debug_string_5398f5bb970e0daa: function(arg0, arg1) {
+            const ret = debugString(arg1);
             const ptr1 = passStringToWasm0(ret, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
             const len1 = WASM_VECTOR_LEN;
             getDataViewMemory0().setInt32(arg0 + 4 * 1, len1, true);
@@ -610,6 +635,10 @@ function __wbg_get_imports(memory) {
         __wbg_set_6be42768c690e380: function(arg0, arg1, arg2) {
             arg0[arg1] = arg2;
         },
+        __wbg_set_7eaa4f96924fd6b3: function() { return handleError(function (arg0, arg1, arg2) {
+            const ret = Reflect.set(arg0, arg1, arg2);
+            return ret;
+        }, arguments); },
         __wbg_set_8c0b3ffcf05d61c2: function(arg0, arg1, arg2) {
             arg0.set(getArrayU8FromWasm0(arg1, arg2));
         },
@@ -728,22 +757,22 @@ function __wbg_get_imports(memory) {
             return ret;
         },
         __wbindgen_cast_0000000000000001: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { dtor_idx: 549, function: Function { arguments: [], shim_idx: 550, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+            // Cast intrinsic for `Closure(Closure { dtor_idx: 561, function: Function { arguments: [], shim_idx: 562, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
             const ret = makeMutClosure(arg0, arg1, wasm.wasm_bindgen_b7ae71689503b1fc___closure__destroy___dyn_core_f576a7f0a61931f7___ops__function__FnMut_____Output_______, wasm_bindgen_b7ae71689503b1fc___convert__closures_____invoke_______true_);
             return ret;
         },
         __wbindgen_cast_0000000000000002: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { dtor_idx: 653, function: Function { arguments: [Externref], shim_idx: 654, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+            // Cast intrinsic for `Closure(Closure { dtor_idx: 665, function: Function { arguments: [Externref], shim_idx: 666, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
             const ret = makeMutClosure(arg0, arg1, wasm.wasm_bindgen_b7ae71689503b1fc___closure__destroy___dyn_core_f576a7f0a61931f7___ops__function__FnMut__wasm_bindgen_b7ae71689503b1fc___JsValue____Output_______, wasm_bindgen_b7ae71689503b1fc___convert__closures_____invoke___wasm_bindgen_b7ae71689503b1fc___JsValue______true_);
             return ret;
         },
         __wbindgen_cast_0000000000000003: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { dtor_idx: 697, function: Function { arguments: [Externref], shim_idx: 698, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
+            // Cast intrinsic for `Closure(Closure { dtor_idx: 709, function: Function { arguments: [Externref], shim_idx: 710, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
             const ret = makeMutClosure(arg0, arg1, wasm.wasm_bindgen_b7ae71689503b1fc___closure__destroy___dyn_core_f576a7f0a61931f7___ops__function__FnMut__wasm_bindgen_b7ae71689503b1fc___JsValue____Output___core_f576a7f0a61931f7___result__Result_____wasm_bindgen_b7ae71689503b1fc___JsError___, wasm_bindgen_b7ae71689503b1fc___convert__closures_____invoke___wasm_bindgen_b7ae71689503b1fc___JsValue__core_f576a7f0a61931f7___result__Result_____wasm_bindgen_b7ae71689503b1fc___JsError___true_);
             return ret;
         },
         __wbindgen_cast_0000000000000004: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { dtor_idx: 697, function: Function { arguments: [NamedExternref("MessageEvent")], shim_idx: 700, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+            // Cast intrinsic for `Closure(Closure { dtor_idx: 709, function: Function { arguments: [NamedExternref("MessageEvent")], shim_idx: 712, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
             const ret = makeMutClosure(arg0, arg1, wasm.wasm_bindgen_b7ae71689503b1fc___closure__destroy___dyn_core_f576a7f0a61931f7___ops__function__FnMut__wasm_bindgen_b7ae71689503b1fc___JsValue____Output___core_f576a7f0a61931f7___result__Result_____wasm_bindgen_b7ae71689503b1fc___JsError___, wasm_bindgen_b7ae71689503b1fc___convert__closures_____invoke___web_sys_2554c557213fe36a___features__gen_MessageEvent__MessageEvent______true_);
             return ret;
         },
@@ -858,6 +887,71 @@ function addToExternrefTable0(obj) {
 const CLOSURE_DTORS = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(state => state.dtor(state.a, state.b));
+
+function debugString(val) {
+    // primitive types
+    const type = typeof val;
+    if (type == 'number' || type == 'boolean' || val == null) {
+        return  `${val}`;
+    }
+    if (type == 'string') {
+        return `"${val}"`;
+    }
+    if (type == 'symbol') {
+        const description = val.description;
+        if (description == null) {
+            return 'Symbol';
+        } else {
+            return `Symbol(${description})`;
+        }
+    }
+    if (type == 'function') {
+        const name = val.name;
+        if (typeof name == 'string' && name.length > 0) {
+            return `Function(${name})`;
+        } else {
+            return 'Function';
+        }
+    }
+    // objects
+    if (Array.isArray(val)) {
+        const length = val.length;
+        let debug = '[';
+        if (length > 0) {
+            debug += debugString(val[0]);
+        }
+        for(let i = 1; i < length; i++) {
+            debug += ', ' + debugString(val[i]);
+        }
+        debug += ']';
+        return debug;
+    }
+    // Test for built-in
+    const builtInMatches = /\[object ([^\]]+)\]/.exec(toString.call(val));
+    let className;
+    if (builtInMatches && builtInMatches.length > 1) {
+        className = builtInMatches[1];
+    } else {
+        // Failed to match the standard '[object ClassName]'
+        return toString.call(val);
+    }
+    if (className == 'Object') {
+        // we're a user defined class or Object
+        // JSON.stringify avoids problems with cycles, and is generally much
+        // easier than looping through ownProperties of `val`.
+        try {
+            return 'Object(' + JSON.stringify(val) + ')';
+        } catch (_) {
+            return 'Object';
+        }
+    }
+    // errors
+    if (val instanceof Error) {
+        return `${val.name}: ${val.message}\n${val.stack}`;
+    }
+    // TODO we could test for more things here, like `Set`s and `Map`s.
+    return className;
+}
 
 function getArrayU8FromWasm0(ptr, len) {
     ptr = ptr >>> 0;

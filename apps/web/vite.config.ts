@@ -16,14 +16,9 @@ export default defineConfig({
       ),
     },
   },
-  // Required for SharedArrayBuffer (WASM atomics for crossbeam_channel batch scanning).
+  // COOP/COEP headers for SharedArrayBuffer in local dev
+  // (in production, the coi-sw.js service worker adds these)
   server: {
-    headers: {
-      "Cross-Origin-Opener-Policy": "same-origin",
-      "Cross-Origin-Embedder-Policy": "credentialless",
-    },
-  },
-  preview: {
     headers: {
       "Cross-Origin-Opener-Policy": "same-origin",
       "Cross-Origin-Embedder-Policy": "credentialless",
@@ -34,8 +29,7 @@ export default defineConfig({
     format: "es",
     plugins: () => [wasm()],
   },
-  // Exclude zcash-view-wasm from dep pre-bundling — it contains worker helper
-  // snippets that must be served as separate files (wasm-bindgen-rayon workers).
+  // Exclude zcash-view-wasm from dep pre-bundling so WASM files are served as-is.
   optimizeDeps: {
     exclude: ["zcash-view-wasm"],
   },

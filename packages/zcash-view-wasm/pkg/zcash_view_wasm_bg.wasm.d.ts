@@ -6,6 +6,8 @@ export const zcashviewwallet_fromBytes: (a: number, b: number, c: number, d: num
 export const zcashviewwallet_getBalance: (a: number) => [number, number, number];
 export const zcashviewwallet_getChainTip: (a: number) => any;
 export const zcashviewwallet_getSentTransactions: (a: number) => [number, number, number];
+export const zcashviewwallet_syncOneChunk: (a: number) => any;
+export const zcashviewwallet_syncPrepare: (a: number) => any;
 export const zcashviewwallet_syncWithProgress: (a: number, b: any) => any;
 export const zcashviewwallet_toBytes: (a: number) => [number, number, number, number];
 export const init: () => void;

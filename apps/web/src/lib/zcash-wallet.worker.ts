@@ -2,14 +2,6 @@
 /// Messages are queued and processed sequentially to prevent
 /// concurrent access to the WASM wallet (which causes aliasing errors).
 
-// Check if SharedArrayBuffer is available (required for atomics-enabled WASM)
-console.log(
-  "[zcash-worker] SharedArrayBuffer available:",
-  typeof SharedArrayBuffer !== "undefined",
-  "| crossOriginIsolated:",
-  (self as unknown as { crossOriginIsolated: boolean }).crossOriginIsolated
-)
-
 // Import the WASM module directly (--target web output, not through vite-plugin-wasm)
 import initWasm, { ZcashViewWallet, initThreadPool } from "zcash-view-wasm/zcash_view_wasm.js"
 // Import the WASM binary URL so Vite resolves it correctly

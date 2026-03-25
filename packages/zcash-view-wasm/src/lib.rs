@@ -35,13 +35,14 @@ const MAX_CHECKPOINTS: usize = 100;
 // to reduce gRPC round-trips, then scan each block individually.
 const DOWNLOAD_CHUNK: u32 = 500;
 
+pub use wasm_bindgen_rayon::init_thread_pool;
+
 macro_rules! console_log {
     ($($t:tt)*) => {
         web_sys::console::log_1(&format!($($t)*).into())
     }
 }
 
-pub use wasm_bindgen_rayon::init_thread_pool;
 
 #[wasm_bindgen(start)]
 pub fn init() {
@@ -540,11 +541,10 @@ impl ZcashViewWallet {
             u64::from(range_end - 1)
         );
 
-        // Insert all blocks into cache
+        // Insert all blocks into cache and scan as a batch
+        let num_blocks = all_blocks.len();
         let _ = self.cache.insert(all_blocks).await;
-        console_log!("[zcash-wallet]   Scanning...");
 
-        // Scan entire batch at once
         let scan_start = js_sys::Date::now();
         scan_cached_blocks(
             &MAIN_NETWORK,
@@ -559,9 +559,9 @@ impl ZcashViewWallet {
         let elapsed = js_sys::Date::now() - scan_start;
         console_log!(
             "[zcash-wallet]   Scanned {} blocks in {:.1}s ({:.0} blocks/s)",
-            scan_range.len(),
+            num_blocks,
             elapsed / 1000.0,
-            scan_range.len() as f64 / (elapsed / 1000.0).max(0.001)
+            num_blocks as f64 / (elapsed / 1000.0).max(0.001)
         );
 
         // Clean up cache
