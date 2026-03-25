@@ -11,7 +11,7 @@ import { tribe } from "../lib/tribe"
 
 interface User {
   id: string
-  email: string
+  email?: string | null
 }
 
 interface AuthContextType {

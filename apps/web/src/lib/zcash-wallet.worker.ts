@@ -11,12 +11,11 @@ console.log(
 )
 
 // Import the WASM module directly (--target web output, not through vite-plugin-wasm)
-// @ts-expect-error -- raw URL import for the web target JS wrapper
 import initWasm, { ZcashViewWallet, initThreadPool } from "zcash-view-wasm/zcash_view_wasm.js"
 // Import the WASM binary URL so Vite resolves it correctly
 import wasmUrl from "zcash-view-wasm/zcash_view_wasm_bg.wasm?url"
 
-let wallet: InstanceType<typeof ZcashViewWallet> | null = null
+let wallet: ZcashViewWallet | null = null
 
 type Request =
   | { id: number; type: "create"; lightwalletdUrl: string; ufvk: string; birthdayHeight: number }

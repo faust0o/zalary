@@ -166,7 +166,10 @@ export function EmployeesPage() {
     refetch()
   }
 
-  const employees: Employee[] = data?.employees ?? []
+  const employees: Employee[] = (data?.employees ?? []).map((e) => ({
+    ...e,
+    title: e.title ?? null,
+  }))
 
   return (
     <div className="space-y-8">

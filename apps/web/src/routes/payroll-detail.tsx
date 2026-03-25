@@ -11,10 +11,11 @@ import {
   SelectValue,
 } from "@workspace/ui/components/select"
 import { ArrowLeft, Trash2, X } from "lucide-react"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { useTitle } from "../hooks/use-title"
 import { PayrollDocument, PayrollsDocument, AllEmployeesDocument, CreatePayrollDocument, UpdatePayrollDocument, DeletePayrollDocument } from "../graphql/__generated__/graphql"
+import type { Schedule } from "../graphql/__generated__/graphql"
 
 export function PayrollDetailPage() {
   const { id } = useParams()
@@ -23,8 +24,8 @@ export function PayrollDetailPage() {
   useTitle(isNew ? "Create Payroll" : "Edit Payroll")
 
   const { data: payrollData } = useQuery(PayrollDocument, {
-    variables: { id },
-    skip: isNew,
+    variables: { id: id! },
+    skip: isNew || !id,
   })
   const { data: employeesData } = useQuery(AllEmployeesDocument)
 
@@ -33,24 +34,24 @@ export function PayrollDetailPage() {
   const [updatePayroll] = useMutation(UpdatePayrollDocument, refetchPayrolls)
   const [deletePayroll] = useMutation(DeletePayrollDocument, refetchPayrolls)
 
+  const payroll = payrollData?.payroll
   const [name, setName] = useState("")
-  const [schedule, setSchedule] = useState("EVERY_MONTH")
+  const [schedule, setSchedule] = useState<Schedule>("EVERY_MONTH")
   const [customDays, setCustomDays] = useState("")
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([])
+  const [initialized, setInitialized] = useState(false)
 
-  useEffect(() => {
-    if (payrollData?.payroll) {
-      const p = payrollData.payroll
-      setName(p.name)
-      setSchedule(p.schedule)
-      setCustomDays(p.customDays?.toString() ?? "")
-      setSelectedEmployeeIds(
-        p.employees.map((pe: { employeeId: string }) => pe.employeeId)
-      )
-    }
-  }, [payrollData])
+  if (payroll && !initialized) {
+    setName(payroll.name ?? "")
+    setSchedule((payroll.schedule as Schedule) ?? "EVERY_MONTH")
+    setCustomDays(payroll.customDays?.toString() ?? "")
+    setSelectedEmployeeIds(
+      (payroll.employees ?? []).map((pe) => pe.employeeId ?? "").filter(Boolean)
+    )
+    setInitialized(true)
+  }
 
-  const allEmployees = employeesData?.employees ?? []
+  const allEmployees = useMemo(() => employeesData?.employees ?? [], [employeesData])
 
   const [employeeSearch, setEmployeeSearch] = useState("")
   const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -88,7 +89,7 @@ export function PayrollDetailPage() {
     if (isNew) {
       await createPayroll({ variables })
     } else {
-      await updatePayroll({ variables: { id, ...variables } })
+      await updatePayroll({ variables: { id: id!, ...variables } })
     }
     navigate("/payrolls")
   }
@@ -130,7 +131,7 @@ export function PayrollDetailPage() {
           <div className="space-y-2">
             <Label>Schedule</Label>
             <div className="flex gap-3">
-              <Select value={schedule} onValueChange={setSchedule}>
+              <Select value={schedule} onValueChange={(v) => setSchedule(v as Schedule)}>
                 <SelectTrigger className="!h-10 flex-1">
                   <SelectValue placeholder="Select schedule" />
                 </SelectTrigger>

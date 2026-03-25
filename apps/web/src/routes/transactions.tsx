@@ -55,7 +55,6 @@ export function TransactionsPage() {
   const [statusFilter, setStatusFilter] = useState("all")
   const [payrollFilter, setPayrollFilter] = useState("all")
   const [resyncing, setResyncing] = useState(false)
-  const [matchCount, setMatchCount] = useState<number | null>(null)
 
   async function matchPayments() {
     const sentTxs = await getSentTxs()
@@ -87,11 +86,9 @@ export function TransactionsPage() {
 
   async function handleResync() {
     setResyncing(true)
-    setMatchCount(null)
     try {
       await sync()
-      const count = await matchPayments()
-      setMatchCount(count)
+      await matchPayments()
     } catch (e) {
       console.error("Resync failed:", e)
     } finally {
