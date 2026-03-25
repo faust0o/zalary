@@ -21,7 +21,7 @@
     "@scure/bip39": "^2.0.1",
     "@simplewebauthn/browser": "^13.3.0",
     "@tribecloud/sdk": "^1.1.7",
-    "@workspace/ui": "workspace:*",
+    "@workspace/ui": "*",
     "graphql": "^16.13.1",
     "js-convert-case": "^4.2.0",
     "lucide-react": "^0.577.0",
@@ -34,6 +34,7 @@
     "recharts": "^3.8.0",
     "zcash-view-wasm": "file:../../packages/zcash-view-wasm/pkg"
   },
+  "packageManager": "bun@1.2.0",
   "engines": {
     "node": "22.x"
   },
