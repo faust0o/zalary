@@ -20,8 +20,7 @@ import { RegisterUserDocument } from "../graphql/__generated__/graphql"
 export function LoginPage() {
   useTitle("Sign In")
   const navigate = useNavigate()
-  const { user, loading, login, loginWithEmail, register, registerPasskey } =
-    useAuth()
+  const { user, loading, login, loginWithEmail, register } = useAuth()
   const [isRegistering, setIsRegistering] = useState(false)
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
