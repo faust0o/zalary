@@ -21,7 +21,7 @@ export function Layout() {
 
   const meLoaded = !meLoading && meData?.me != null
   const needsOnboarding = fromRegistration ||
-    (meLoaded && (!meData.me.zcashViewingKey || !meData.me.walletBirthdayHeight))
+    (meLoaded && (!meData.me?.zcashViewingKey || !meData.me?.walletBirthdayHeight))
   const onboardingOpen = needsOnboarding && !onboardingDismissed
 
   if (loading) {
