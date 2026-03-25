@@ -187,7 +187,7 @@ export function SettingsPage() {
             <div className="space-y-1">
               {devices.map((device, index) => (
                 <div key={device.id} className="border border-muted px-3 py-2 rounded-lg">
-                  {index > 0 && <Separator className="my-3" />}
+                  {index > 1 && <Separator className="my-3" />}
                   <div className="flex items-center gap-3">
                     <div className="text-muted-foreground">
                       <DeviceIcon deviceType={device.deviceType} />
