@@ -14,7 +14,7 @@ import { ZcashWalletProvider } from "../hooks/use-zcash-wallet"
 
 export function Layout() {
   const { user, loading } = useAuth()
-  const { data: meData, loading: meLoading } = useQuery(MeLayoutDocument, { skip: !user })
+  const { data: meData, loading: meLoading, refetch: refetchMe } = useQuery(MeLayoutDocument, { skip: !user })
   const [searchParams] = useSearchParams()
   const fromRegistration = searchParams.get("onboarding") === "1"
   const [onboardingDismissed, setOnboardingDismissed] = useState(false)
@@ -53,7 +53,7 @@ export function Layout() {
           </SidebarInset>
           <OnboardingModal
             open={onboardingOpen}
-            onOpenChange={(open) => { if (!open) setOnboardingDismissed(true) }}
+            onOpenChange={(open) => { if (!open) { setOnboardingDismissed(true); refetchMe() } }}
             skipPasskey={fromRegistration}
           />
         </SidebarProvider>
