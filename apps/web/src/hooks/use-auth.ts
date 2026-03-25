@@ -8,6 +8,7 @@ import {
 } from "react"
 import { createElement } from "react"
 import { tribe } from "../lib/tribe"
+import { clearWalletState } from "../lib/zcash-wallet"
 
 interface User {
   id: string
@@ -65,6 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const logout = useCallback(async () => {
+    await clearWalletState()
     await tribe.logout()
     setUser(null)
   }, [])
