@@ -83,13 +83,12 @@ export function CoiGuard({ children }: { children: React.ReactNode }) {
 
   if (status === "ready") return <>{children}</>
 
-  const showModal = status !== "ready"
   const isRetryable = status === "failed"
 
   return (
     <>
       {children}
-      <Dialog open={showModal} onOpenChange={() => {}}>
+      <Dialog open onOpenChange={() => {}}>
         <DialogContent
           className="sm:max-w-md"
           onPointerDownOutside={(e) => e.preventDefault()}
