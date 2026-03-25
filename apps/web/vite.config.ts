@@ -23,6 +23,17 @@ export default defineConfig({
       "Cross-Origin-Embedder-Policy": "credentialless",
     },
   },
+  preview: {
+    headers: {
+      "Cross-Origin-Opener-Policy": "same-origin",
+      "Cross-Origin-Embedder-Policy": "credentialless",
+    },
+  },
+  // Workers must use ES module format to support WASM code-splitting.
+  worker: {
+    format: "es",
+    plugins: () => [wasm()],
+  },
   // Exclude zcash-view-wasm from dep pre-bundling — it contains worker helper
   // snippets that must be served as separate files (wasm-bindgen-rayon workers).
   optimizeDeps: {
