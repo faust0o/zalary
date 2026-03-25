@@ -1,0 +1,15 @@
+{
+  "name": "zcash-view-wasm",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "zcash_view_wasm_bg.wasm",
+    "zcash_view_wasm.js",
+    "zcash_view_wasm.d.ts"
+  ],
+  "main": "zcash_view_wasm.js",
+  "types": "zcash_view_wasm.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
