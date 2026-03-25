@@ -14,13 +14,14 @@ import { ZcashWalletProvider } from "../hooks/use-zcash-wallet"
 
 export function Layout() {
   const { user, loading } = useAuth()
-  const { data: meData } = useQuery(MeLayoutDocument, { skip: !user })
+  const { data: meData, loading: meLoading } = useQuery(MeLayoutDocument, { skip: !user })
   const [searchParams] = useSearchParams()
   const fromRegistration = searchParams.get("onboarding") === "1"
   const [onboardingDismissed, setOnboardingDismissed] = useState(false)
 
+  const meLoaded = !meLoading && meData?.me != null
   const needsOnboarding = fromRegistration ||
-    (meData?.me != null && (!meData.me.zcashViewingKey || !meData.me.walletBirthdayHeight))
+    (meLoaded && (!meData.me.zcashViewingKey || !meData.me.walletBirthdayHeight))
   const onboardingOpen = needsOnboarding && !onboardingDismissed
 
   if (loading) {
