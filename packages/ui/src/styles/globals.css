@@ -2,7 +2,7 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/inter";
-@import "@fontsource-variable/playfair-display";
+@import "@fontsource/dm-serif-display";
 
 @custom-variant dark (&:is(.dark *));
 @source "../../../apps/**/*.{ts,tsx}";
@@ -120,7 +120,7 @@
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-ring: var(--sidebar-ring);
     --font-sans: 'Inter Variable', sans-serif;
-    --font-serif: 'Playfair Display Variable', serif;
+    --font-serif: 'DM Serif Display', serif;
 }
 
 @layer base {
