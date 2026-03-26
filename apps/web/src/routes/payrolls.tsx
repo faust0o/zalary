@@ -17,7 +17,7 @@ export function PayrollsPage() {
   const [disburseOpen, setDisburseOpen] = useState(false)
   const [disbursePayrollId, setDisbursePayrollId] = useState<string | null>(null)
 
-  const payrolls = (data as { payrolls?: typeof data })?.payrolls ?? []
+  const payrolls = data?.payrolls ?? []
   const zecBalance = walletBalance?.total ?? 0
 
   return (
