@@ -235,7 +235,7 @@ export function DashboardView({
                   axisLine={false}
                   tickMargin={8}
                   tickFormatter={(value: number) => {
-                    if (!zecPrice) return `${value}`
+                    if (!zecPrice) return `${value} ZEC`
                     const usd = value * zecPrice
                     if (usd >= 1000) return `$${(usd / 1000).toFixed(0)}K`
                     return `$${usd.toFixed(0)}`
