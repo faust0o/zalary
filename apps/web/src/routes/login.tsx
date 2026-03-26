@@ -1,10 +1,5 @@
-import { useState } from "react"
-import { useNavigate, Navigate } from "react-router-dom"
 import { useMutation } from "@apollo/client/react"
 import { Button } from "@workspace/ui/components/button"
-import { Input } from "@workspace/ui/components/input"
-import { Label } from "@workspace/ui/components/label"
-import { Separator } from "@workspace/ui/components/separator"
 import {
   Card,
   CardContent,
@@ -12,10 +7,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@workspace/ui/components/card"
+import { Input } from "@workspace/ui/components/input"
+import { Label } from "@workspace/ui/components/label"
+import { Separator } from "@workspace/ui/components/separator"
+import { Fingerprint } from "lucide-react"
+import { useState } from "react"
+import { Navigate, useNavigate } from "react-router-dom"
+import { RegisterUserDocument } from "../graphql/__generated__/graphql"
 import { useAuth } from "../hooks/use-auth"
 import { useTitle } from "../hooks/use-title"
-import { Fingerprint } from "lucide-react"
-import { RegisterUserDocument } from "../graphql/__generated__/graphql"
 
 export function LoginPage() {
   useTitle("Sign In")
@@ -89,7 +89,7 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-neutral-950 to-neutral-900 p-4">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/20 to-neutral-100 dark:to-neutral-900 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <img
