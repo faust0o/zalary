@@ -1,7 +1,15 @@
 import { Button } from "@workspace/ui/components/button"
 import { Card } from "@workspace/ui/components/card"
 import { Separator } from "@workspace/ui/components/separator"
-import { ArrowRight, Calendar, Moon, Pencil, Sun, Users } from "lucide-react"
+import {
+  ArrowRight,
+  Calendar,
+  Monitor,
+  Moon,
+  Pencil,
+  Sun,
+  Users,
+} from "lucide-react"
 
 import { Navigate, useNavigate } from "react-router-dom"
 import { useTheme } from "../components/theme-provider"
@@ -26,11 +34,6 @@ export function LandingPage() {
 
   if (user) return <Navigate to="/dashboard" replace />
 
-  const isDark =
-    theme === "dark" ||
-    (theme === "system" &&
-      window.matchMedia("(prefers-color-scheme: dark)").matches)
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/20 to-neutral-100 text-foreground dark:to-neutral-900">
       {/* Nav */}
@@ -40,20 +43,33 @@ export function LandingPage() {
           <span className="text-lg font-medium tracking-wide">Zalary</span>
         </a>
         <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon-lg"
-            onClick={() => setTheme(isDark ? "light" : "dark")}
-            aria-label="Toggle theme"
-          >
-            {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
-          </Button>
-          <Button variant="ghost" size="lg" onClick={() => navigate("/login")}>
+          <div className="hidden items-center rounded-full border border-border p-0.5 md:flex">
+            {([
+              { value: "system" as const, Icon: Monitor, label: "System theme" },
+              { value: "light" as const, Icon: Sun, label: "Light theme" },
+              { value: "dark" as const, Icon: Moon, label: "Dark theme" },
+            ]).map(({ value, Icon, label }) => (
+              <button
+                key={value}
+                type="button"
+                title={label}
+                onClick={() => setTheme(value)}
+                className={`cursor-pointer rounded-full p-1.5 transition-colors ${
+                  theme === value
+                    ? "bg-border text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Icon className="size-3.5" />
+              </button>
+            ))}
+          </div>
+          <Button variant="ghost" size="md" onClick={() => navigate("/login")}>
             Sign in
           </Button>
-          <Button size="lg" onClick={() => navigate("/demo/dashboard")}>
+          <Button size="md" onClick={() => navigate("/demo/dashboard")}>
             Launch App
-            <ArrowRight className="ml-1 size-5" />
+            <ArrowRight className="ml-1 size-4" />
           </Button>
         </div>
       </nav>
@@ -201,7 +217,7 @@ export function LandingPage() {
                         </div>
                         <div className="mt-3 flex items-center border-t text-[10px] text-muted-foreground">
                           <span className="flex-1 py-1.5 text-center">
-                            ${p.usd.toLocaleString()}
+                            ${p.usd >= 1000 ? `${(p.usd / 1000).toFixed(1)}K` : p.usd}
                           </span>
                           <Separator orientation="vertical" className="h-5" />
                           <span className="flex flex-1 items-center justify-center gap-1 py-1.5">
