@@ -230,7 +230,17 @@ export function DashboardView({
                     })
                   }}
                 />
-                <YAxis tickLine={false} axisLine={false} tickMargin={8} />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                  tickFormatter={(value: number) => {
+                    if (!zecPrice) return `${value}`
+                    const usd = value * zecPrice
+                    if (usd >= 1000) return `$${(usd / 1000).toFixed(0)}K`
+                    return `$${usd.toFixed(0)}`
+                  }}
+                />
                 <ChartTooltip
                   content={
                     <ChartTooltipContent
