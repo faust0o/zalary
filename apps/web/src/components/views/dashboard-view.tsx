@@ -64,6 +64,7 @@ export interface DashboardViewProps {
   onDisburse?: (payrollId: string) => void
   onNavigate: (path: string) => void
   onEditPayroll?: (payrollId: string) => void
+  headerAction?: React.ReactNode
 }
 
 export function DashboardView({
@@ -74,6 +75,7 @@ export function DashboardView({
   onDisburse,
   onNavigate,
   onEditPayroll,
+  headerAction,
 }: DashboardViewProps) {
   const [chartRange, setChartRange] = useState<"30d" | "6m" | "All">("All")
 
@@ -135,7 +137,10 @@ export function DashboardView({
 
   return (
     <div className="space-y-8">
-      <h2 className="text-4xl font-light tracking-tight">Dashboard</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-4xl font-light tracking-tight">Dashboard</h2>
+        {headerAction}
+      </div>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">

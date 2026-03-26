@@ -1,3 +1,4 @@
+import { Button } from "@workspace/ui/components/button"
 import { useNavigate } from "react-router-dom"
 import { useDemo } from "../../components/demo-context"
 import { DashboardView } from "../../components/views/dashboard-view"
@@ -20,6 +21,16 @@ export function DemoDashboardPage() {
       onDisburse={() => promptLogin()}
       onNavigate={(path) => navigate(`/demo${path}`)}
       onEditPayroll={() => promptLogin()}
+      headerAction={
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="md" onClick={() => navigate("/login")}>
+            Log in
+          </Button>
+          <Button size="md" onClick={() => navigate("/login")}>
+            Sign up
+          </Button>
+        </div>
+      }
     />
   )
 }
