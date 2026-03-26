@@ -12,6 +12,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@workspace/ui/components/chart"
+import { Plus } from "lucide-react"
 import { useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import {
@@ -50,7 +51,7 @@ export function DashboardPage() {
   const [disbursePayrollId, setDisbursePayrollId] = useState<string | null>(null)
 
   const stats = data?.dashboardStats
-  const payrolls = data?.payrolls ?? []
+  const payrolls = useMemo(() => data?.payrolls ?? [], [data?.payrolls])
 
   const { pendingPayrolls, completedPayrolls } = useMemo(() => {
     const pending: typeof payrolls = []
@@ -71,8 +72,21 @@ export function DashboardPage() {
     return { pendingPayrolls: pending, completedPayrolls: completed }
   }, [payrolls])
 
+  const hasRealData = !!stats?.zecSpentByMonth?.length
+
   const allChartData = useMemo(() => {
-    if (!stats?.zecSpentByMonth?.length) return []
+    if (!stats?.zecSpentByMonth?.length) {
+      // Static example data for empty state
+      const now = new Date()
+      let total = 0
+      const amounts = [1.2, 2.5, 1.8, 3.1, 2.2, 2.8]
+      return amounts.map((amount, i) => {
+        const d = new Date(now.getFullYear(), now.getMonth() - (amounts.length - 1 - i), 1)
+        const month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+        total += amount
+        return { month, monthly: amount, accumulated: +total.toFixed(4) }
+      })
+    }
     let total = 0
     return stats.zecSpentByMonth.map(
       (item: { month: string; amount: number }) => {
@@ -84,7 +98,7 @@ export function DashboardPage() {
         }
       }
     )
-  }, [stats?.zecSpentByMonth])
+  }, [stats])
 
   const chartData = useMemo(() => {
     if (chartRange === "All") return allChartData
@@ -128,7 +142,15 @@ export function DashboardPage() {
               <p className="text-sm text-muted-foreground">Loading chart...</p>
             </div>
           ) : chartData.length ? (
-            <ChartContainer config={chartConfig} className="h-[300px] w-full">
+            <div className="relative">
+            {!hasRealData && (
+              <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-background/40 backdrop-blur-[1px]">
+                <div className="rounded-lg bg-background/90 px-5 py-2.5 text-sm font-medium text-muted-foreground shadow-sm ring-1 ring-border/50">
+                  No payment data yet
+                </div>
+              </div>
+            )}
+            <ChartContainer config={chartConfig} className={`h-[300px] w-full ${!hasRealData ? "opacity-50" : ""}`}>
               <ComposedChart
                 data={chartData}
                 margin={{ top: 5, right: 10, left: 10, bottom: 0 }}
@@ -244,13 +266,8 @@ export function DashboardPage() {
                 />
               </ComposedChart>
             </ChartContainer>
-          ) : (
-            <div className="flex h-[300px] items-center justify-center">
-              <p className="text-sm text-muted-foreground">
-                No payment data yet
-              </p>
             </div>
-          )}
+          ) : null}
         </CardContent>
       </Card>
 
@@ -270,6 +287,19 @@ export function DashboardPage() {
         </div>
         {loading ? (
           <p className="text-muted-foreground text-sm">Loading...</p>
+        ) : payrolls.length === 0 ? (
+          <Card
+            className="flex cursor-pointer flex-col items-center justify-center border-dashed py-10 transition-colors hover:border-primary/50 hover:bg-muted/30"
+            onClick={() => navigate("/payrolls/new")}
+          >
+            <div className="mb-3 flex size-12 items-center justify-center rounded-full bg-muted">
+              <Plus className="size-6 text-muted-foreground" />
+            </div>
+            <p className="text-sm font-medium">Create your first payroll</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Set up a schedule to start paying your team
+            </p>
+          </Card>
         ) : (
           <div className="grid gap-4 md:grid-cols-3">
             {pendingPayrolls.map((payroll) => {
