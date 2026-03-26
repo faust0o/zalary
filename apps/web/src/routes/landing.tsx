@@ -81,11 +81,11 @@ export function LandingPage() {
               <span className="block font-serif text-[6rem] font-bold">
                 Private Payroll.
               </span>
-              <span className="text-6xl font-thin text-muted-foreground">
+              <span className="text-5xl font-thin text-muted-foreground">
                 Your team gets paid.
               </span>
               <br />
-              <span className="text-6xl font-medium">Nobody else finds out.</span>
+              <span className="text-4xl font-medium">Nobody else finds out.</span>
             </h1>
             <div className="flex items-center gap-3">
               <Button
