@@ -44,11 +44,15 @@ export function LandingPage() {
         </a>
         <div className="flex items-center gap-1">
           <div className="hidden items-center rounded-full border border-border p-0.5 md:flex">
-            {([
-              { value: "system" as const, Icon: Monitor, label: "System theme" },
+            {[
+              {
+                value: "system" as const,
+                Icon: Monitor,
+                label: "System theme",
+              },
               { value: "light" as const, Icon: Sun, label: "Light theme" },
               { value: "dark" as const, Icon: Moon, label: "Dark theme" },
-            ]).map(({ value, Icon, label }) => (
+            ].map(({ value, Icon, label }) => (
               <button
                 key={value}
                 type="button"
@@ -76,15 +80,14 @@ export function LandingPage() {
 
       {/* Hero */}
       <section className="relative flex min-h-screen items-center justify-center overflow-hidden px-6 pt-24 pb-20 md:px-12">
-        {/* Grid background */}
+        {/* Doodle background */}
         <div
-          className="pointer-events-none absolute inset-0"
+          className="pointer-events-none absolute inset-0 brightness-300 opacity-5 dark:opacity-20"
           style={{
-            backgroundImage:
-              "linear-gradient(hsl(var(--border) / 0.15) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--border) / 0.15) 1px, transparent 1px)",
-            backgroundSize: "64px 64px",
-            maskImage:
-              "radial-gradient(ellipse 75% 65% at 50% 10%, black 20%, transparent 100%)",
+            backgroundImage: "url('/zalary-doodle.svg')",
+            backgroundPosition: "center",
+            backgroundSize: "cover",
+            backgroundRepeat: "no-repeat",
           }}
         />
         {/* Glow */}
@@ -93,8 +96,8 @@ export function LandingPage() {
         <div className="relative mx-auto grid w-full max-w-[1100px] items-center gap-16 md:grid-cols-2 md:gap-20">
           {/* Left */}
           <div>
-            <h1 className="text-5xl leading-[1.06] mb-8 tracking-tight md:text-6xl lg:text-7xl">
-              <h2 className="block mb-6 font-serif text-[6rem] font-bold">
+            <h1 className="mb-8 text-5xl leading-[1.06] tracking-tight md:text-6xl lg:text-7xl">
+              <h2 className="mb-6 block font-serif text-[6rem] font-bold">
                 Private Payroll.
               </h2>
               <h2 className="mb-6 text-5xl font-thin text-muted-foreground">
@@ -162,19 +165,63 @@ export function LandingPage() {
                     preserveAspectRatio="none"
                   >
                     <defs>
-                      <linearGradient id="mockFillMonthly" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.3} />
-                        <stop offset="100%" stopColor="var(--color-primary)" stopOpacity={0.02} />
+                      <linearGradient
+                        id="mockFillMonthly"
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1"
+                      >
+                        <stop
+                          offset="0%"
+                          stopColor="var(--color-primary)"
+                          stopOpacity={0.3}
+                        />
+                        <stop
+                          offset="100%"
+                          stopColor="var(--color-primary)"
+                          stopOpacity={0.02}
+                        />
                       </linearGradient>
-                      <linearGradient id="mockFillAccum" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="var(--primary-dark)" stopOpacity={0.15} />
-                        <stop offset="100%" stopColor="var(--primary-dark)" stopOpacity={0.02} />
+                      <linearGradient
+                        id="mockFillAccum"
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1"
+                      >
+                        <stop
+                          offset="0%"
+                          stopColor="var(--primary-dark)"
+                          stopOpacity={0.15}
+                        />
+                        <stop
+                          offset="100%"
+                          stopColor="var(--primary-dark)"
+                          stopOpacity={0.02}
+                        />
                       </linearGradient>
                     </defs>
-                    <polygon fill="url(#mockFillAccum)" points="0,65 50,52 100,40 150,30 200,22 250,15 300,8 300,80 0,80" />
-                    <polyline fill="none" stroke="var(--primary-dark)" strokeWidth="1.5" points="0,65 50,52 100,40 150,30 200,22 250,15 300,8" />
-                    <polygon fill="url(#mockFillMonthly)" points="0,70 50,60 100,65 150,55 200,58 250,50 300,45 300,80 0,80" />
-                    <polyline fill="none" stroke="var(--color-primary)" strokeWidth="1.5" points="0,70 50,60 100,65 150,55 200,58 250,50 300,45" />
+                    <polygon
+                      fill="url(#mockFillAccum)"
+                      points="0,65 50,52 100,40 150,30 200,22 250,15 300,8 300,80 0,80"
+                    />
+                    <polyline
+                      fill="none"
+                      stroke="var(--primary-dark)"
+                      strokeWidth="1.5"
+                      points="0,65 50,52 100,40 150,30 200,22 250,15 300,8"
+                    />
+                    <polygon
+                      fill="url(#mockFillMonthly)"
+                      points="0,70 50,60 100,65 150,55 200,58 250,50 300,45 300,80 0,80"
+                    />
+                    <polyline
+                      fill="none"
+                      stroke="var(--color-primary)"
+                      strokeWidth="1.5"
+                      points="0,70 50,60 100,65 150,55 200,58 250,50 300,45"
+                    />
                   </svg>
                 </div>
 
@@ -217,7 +264,10 @@ export function LandingPage() {
                         </div>
                         <div className="mt-3 flex items-center border-t text-[10px] text-muted-foreground">
                           <span className="flex-1 py-1.5 text-center">
-                            ${p.usd >= 1000 ? `${(p.usd / 1000).toFixed(1)}K` : p.usd}
+                            $
+                            {p.usd >= 1000
+                              ? `${(p.usd / 1000).toFixed(1)}K`
+                              : p.usd}
                           </span>
                           <Separator orientation="vertical" className="h-5" />
                           <span className="flex flex-1 items-center justify-center gap-1 py-1.5">
@@ -251,7 +301,13 @@ export function LandingPage() {
               Three steps, then it runs itself.
             </h2>
             <p className="text-base leading-relaxed text-muted-foreground">
-              Most payroll tools ask you to connect bank accounts, share employee data with third parties, and trust someone else's servers with your financial records. Zalary works differently. You add wallet addresses, pick a schedule, and payments flow through Zcash's shielded pool where amounts and recipients stay hidden from the public chain. The whole process takes about five minutes to set up, and after that it just runs.
+              Most payroll tools ask you to connect bank accounts, share
+              employee data with third parties, and trust someone else's servers
+              with your financial records. Zalary works differently. You add
+              wallet addresses, pick a schedule, and payments flow through
+              Zcash's shielded pool where amounts and recipients stay hidden
+              from the public chain. The whole process takes about five minutes
+              to set up, and after that it just runs.
             </p>
           </div>
 
@@ -303,7 +359,9 @@ export function LandingPage() {
             Ready when you are.
           </h2>
           <p className="mb-10 text-base leading-relaxed text-muted-foreground">
-            Set it up once and your team gets paid on schedule, every time. Zalary keeps a clean record of every payment without exposing the details to anyone who shouldn't see them.
+            Set it up once and your team gets paid on schedule, every time.
+            Zalary keeps a clean record of every payment without exposing the
+            details to anyone who shouldn't see them.
           </p>
           <div className="flex items-center justify-center gap-3">
             <Button
@@ -315,7 +373,8 @@ export function LandingPage() {
             </Button>
           </div>
           <p className="mt-7 text-xs text-muted-foreground">
-            Free to start. No wallet connection needed until you're ready to pay.
+            Free to start. No wallet connection needed until you're ready to
+            pay.
           </p>
         </div>
       </section>
