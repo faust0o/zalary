@@ -15,13 +15,19 @@ import { ZcashWalletProvider } from "../hooks/use-zcash-wallet"
 export function Layout() {
   const { user, loading } = useAuth()
   const { data: meData, loading: meLoading, refetch: refetchMe } = useQuery(MeLayoutDocument, { skip: !user })
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const fromRegistration = searchParams.get("onboarding") === "1"
   const [onboardingDismissed, setOnboardingDismissed] = useState(false)
 
   const meLoaded = !meLoading && meData?.me != null
-  const needsOnboarding = fromRegistration ||
-    (meLoaded && (!meData.me?.zcashViewingKey || !meData.me?.walletBirthdayHeight))
+  const missingWalletConfig = meLoaded && (!meData.me?.zcashViewingKey || !meData.me?.walletBirthdayHeight)
+
+  // Strip onboarding param if wallet is already configured
+  if (fromRegistration && meLoaded && !missingWalletConfig) {
+    searchParams.delete("onboarding")
+    setSearchParams(searchParams, { replace: true })
+  }
+  const needsOnboarding = missingWalletConfig
   const onboardingOpen = needsOnboarding && !onboardingDismissed
 
   if (loading) {
