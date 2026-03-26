@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate } from "react-router-dom"
 import { Layout } from "./_layout"
+import { LandingPage } from "./landing"
 import { LoginPage } from "./login"
 import { DashboardPage } from "./dashboard"
 import { PayrollsPage } from "./payrolls"
@@ -10,6 +11,10 @@ import { SettingsPage } from "./settings"
 
 export const router = createBrowserRouter([
   {
+    path: "/",
+    element: <LandingPage />,
+  },
+  {
     path: "/login",
     element: <LoginPage />,
   },
@@ -17,7 +22,6 @@ export const router = createBrowserRouter([
     path: "/",
     element: <Layout />,
     children: [
-      { index: true, element: <Navigate to="/dashboard" replace /> },
       { path: "dashboard", element: <DashboardPage /> },
       { path: "payrolls", element: <PayrollsPage /> },
       { path: "payrolls/:id", element: <PayrollDetailPage /> },

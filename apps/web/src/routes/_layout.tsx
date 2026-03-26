@@ -39,7 +39,7 @@ export function Layout() {
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />
+    return <Navigate to="/" replace />
   }
 
   const ufvk = meData?.me?.zcashViewingKey ?? null
