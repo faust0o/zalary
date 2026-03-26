@@ -9,7 +9,6 @@ import {
   CardTitle,
 } from "@workspace/ui/components/card"
 import { Input } from "@workspace/ui/components/input"
-import { Separator } from "@workspace/ui/components/separator"
 import {
   Laptop,
   Loader2,
@@ -185,9 +184,8 @@ export function SettingsPage() {
             </p>
           ) : (
             <div className="space-y-1">
-              {devices.map((device, index) => (
+              {devices.map((device) => (
                 <div key={device.id} className="border border-muted px-3 py-2 rounded-lg">
-                  {index > 1 && <Separator className="my-3" />}
                   <div className="flex items-center gap-3">
                     <div className="text-muted-foreground">
                       <DeviceIcon deviceType={device.deviceType} />
