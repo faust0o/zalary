@@ -27,28 +27,51 @@ import { useAuth } from "../hooks/use-auth"
 import { useZcashWallet } from "../hooks/use-zcash-wallet"
 import { useZecPrice } from "../hooks/use-zec-price"
 
-const navItems = [
+const defaultNavItems = [
   { title: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
   { title: "Payrolls", icon: Calendar, path: "/payrolls" },
   { title: "Employees", icon: Users, path: "/employees" },
   { title: "Transactions", icon: ArrowLeftRight, path: "/transactions" },
 ]
 
-export function AppSidebar() {
+export interface AppSidebarProps {
+  /** Override the displayed email */
+  overrideEmail?: string
+  /** Override the displayed ZEC balance */
+  overrideBalance?: number
+  /** Override nav item paths (e.g. prefix with /demo) */
+  navItems?: { title: string; icon: typeof LayoutDashboard; path: string }[]
+  /** Override the logout button label and action */
+  footerAction?: { label: string; icon: typeof LogOut; onClick: () => void }
+  /** Hide wallet sync status */
+  hideWalletSync?: boolean
+  /** Hide settings nav item */
+  hideSettings?: boolean
+}
+
+export function AppSidebar({
+  overrideEmail,
+  overrideBalance,
+  navItems = defaultNavItems,
+  footerAction,
+  hideWalletSync,
+  hideSettings,
+}: AppSidebarProps = {}) {
   const location = useLocation()
   const navigate = useNavigate()
+
   const { user, logout } = useAuth()
   const { data } = useQuery(MeSidebarDocument, { skip: !user })
 
-  const email = (data as { me?: { email: string } })?.me?.email ?? user?.email
+  const email = overrideEmail ?? (data as { me?: { email: string } })?.me?.email ?? user?.email
   const { balance: walletBalance, syncing, lastSyncedHeight, syncProgress, initialized: walletInitialized, error: walletError } = useZcashWallet()
   const graphqlBalance =
     (data as { zecBalance?: { available: number } })?.zecBalance?.available ?? 0
-  // Use wallet balance once a sync has completed; otherwise fall back to GraphQL.
-  const balance =
+  const balance = overrideBalance ?? (
     lastSyncedHeight !== null && walletBalance !== null
       ? walletBalance.total
       : graphqlBalance
+  )
   const { price: zecPrice, priceHistory } = useZecPrice()
   const [hoverPrice, setHoverPrice] = useState<number | null>(null)
 
@@ -87,33 +110,37 @@ export function AppSidebar() {
             </div>
           </div>
           {/* Wallet sync status */}
-          {walletError ? (
-            <p className="mt-1.5 truncate text-xs text-red-500">{walletError}</p>
-          ) : syncing ? (
-            <div className="mt-1.5">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <span className="inline-block size-1.5 animate-pulse rounded-full bg-amber-400" />
-                  Syncing wallet...
-                </span>
-                {syncProgress !== null && (
-                  <span>{syncProgress}%</span>
-                )}
-              </div>
-              {syncProgress !== null && (
-                <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-                  <div
-                    className="h-full rounded-full bg-amber-400 transition-all duration-500"
-                    style={{ width: `${syncProgress}%` }}
-                  />
+          {!hideWalletSync && (
+            <>
+              {walletError ? (
+                <p className="mt-1.5 truncate text-xs text-red-500">{walletError}</p>
+              ) : syncing ? (
+                <div className="mt-1.5">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <span className="inline-block size-1.5 animate-pulse rounded-full bg-amber-400" />
+                      Syncing wallet...
+                    </span>
+                    {syncProgress !== null && (
+                      <span>{syncProgress}%</span>
+                    )}
+                  </div>
+                  {syncProgress !== null && (
+                    <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                      <div
+                        className="h-full rounded-full bg-amber-400 transition-all duration-500"
+                        style={{ width: `${syncProgress}%` }}
+                      />
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          ) : walletInitialized && lastSyncedHeight !== null ? (
-            <p className="mt-1.5 text-xs text-muted-foreground">
-              Synced to block {lastSyncedHeight.toLocaleString()}
-            </p>
-          ) : null}
+              ) : walletInitialized && lastSyncedHeight !== null ? (
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  Synced to block {lastSyncedHeight.toLocaleString()}
+                </p>
+              ) : null}
+            </>
+          )}
         </div>
       </SidebarHeader>
       <SidebarContent>
@@ -138,33 +165,39 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+              {!hideSettings && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    size="lg"
+                    isActive={location.pathname === "/settings"}
+                    onClick={() => navigate("/settings")}
+                    className={cn(
+                      "my-1 cursor-pointer",
+                      location.pathname === "/settings"
+                        ? "!text-[var(--primary-dark)] shadow-xs dark:!text-primary"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    <Settings className="!size-5" />
+                    <span className="text-sm">Settings</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
               <SidebarMenuItem>
                 <SidebarMenuButton
                   size="lg"
-                  isActive={location.pathname === "/settings"}
-                  onClick={() => navigate("/settings")}
-                  className={cn(
-                    "my-1 cursor-pointer",
-                    location.pathname === "/settings"
-                      ? "!text-[var(--primary-dark)] shadow-xs dark:!text-primary"
-                      : "text-muted-foreground"
-                  )}
-                >
-                  <Settings className="!size-5" />
-                  <span className="text-sm">Settings</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  size="lg"
-                  onClick={async () => {
+                  onClick={footerAction?.onClick ?? (async () => {
                     await logout()
                     navigate("/login")
-                  }}
+                  })}
                   className="my-1 cursor-pointer text-muted-foreground"
                 >
-                  <LogOut className="!size-5" />
-                  <span className="text-sm">Log out</span>
+                  {footerAction ? (
+                    <footerAction.icon className="!size-5" />
+                  ) : (
+                    <LogOut className="!size-5" />
+                  )}
+                  <span className="text-sm">{footerAction?.label ?? "Log out"}</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>

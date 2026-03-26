@@ -1,6 +1,11 @@
 import { createBrowserRouter } from "react-router-dom"
 import { Layout } from "./_layout"
+import { DemoLayout } from "./_demo-layout"
 import { DashboardPage } from "./dashboard"
+import { DemoDashboardPage } from "./demo/dashboard"
+import { DemoEmployeesPage } from "./demo/employees"
+import { DemoPayrollsPage } from "./demo/payrolls"
+import { DemoTransactionsPage } from "./demo/transactions"
 import { EmployeesPage } from "./employees"
 import { LandingPage } from "./landing"
 import { LoginPage } from "./login"
@@ -17,6 +22,16 @@ export const router = createBrowserRouter([
   {
     path: "/login",
     element: <LoginPage />,
+  },
+  {
+    path: "/demo",
+    element: <DemoLayout />,
+    children: [
+      { path: "dashboard", element: <DemoDashboardPage /> },
+      { path: "payrolls", element: <DemoPayrollsPage /> },
+      { path: "employees", element: <DemoEmployeesPage /> },
+      { path: "transactions", element: <DemoTransactionsPage /> },
+    ],
   },
   {
     path: "/",

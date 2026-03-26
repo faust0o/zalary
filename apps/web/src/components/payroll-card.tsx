@@ -28,6 +28,7 @@ export function PayrollCard({
   dueDate,
   completed,
   onClick,
+  onEdit,
 }: {
   payrollId: string
   name: string
@@ -36,6 +37,7 @@ export function PayrollCard({
   dueDate: Date
   completed: boolean
   onClick?: () => void
+  onEdit?: () => void
 }) {
   const navigate = useNavigate()
   const diffDays = Math.ceil(
@@ -81,7 +83,8 @@ export function PayrollCard({
             className="hover:bg-muted flex-1 flex justify-center items-center h-full p-0 text-muted-foreground"
             onClick={(e) => {
               e.stopPropagation()
-              navigate(`/payrolls/${payrollId}`)
+              if (onEdit) onEdit()
+              else navigate(`/payrolls/${payrollId}`)
             }}
           >
             <Pencil className="size-3.5" />

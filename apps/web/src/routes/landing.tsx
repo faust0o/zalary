@@ -51,7 +51,7 @@ export function LandingPage() {
           <Button variant="ghost" size="lg" onClick={() => navigate("/login")}>
             Sign in
           </Button>
-          <Button size="lg" onClick={() => navigate("/login")}>
+          <Button size="lg" onClick={() => navigate("/demo/dashboard")}>
             Launch App
             <ArrowRight className="ml-1 size-5" />
           </Button>
@@ -89,7 +89,7 @@ export function LandingPage() {
             <div className="flex items-center gap-3">
               <Button
                 size="lg"
-                onClick={() => navigate("/login")}
+                onClick={() => navigate("/demo/dashboard")}
                 className="shadow-[0_0_36px_rgba(244,183,40,0.18)]"
               >
                 Start paying privately
@@ -292,7 +292,7 @@ export function LandingPage() {
           <div className="flex items-center justify-center gap-3">
             <Button
               size="lg"
-              onClick={() => navigate("/login")}
+              onClick={() => navigate("/demo/dashboard")}
               className="shadow-[0_0_48px_rgba(244,183,40,0.2)]"
             >
               Launch Zalary
