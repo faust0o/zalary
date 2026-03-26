@@ -77,15 +77,14 @@ export function LandingPage() {
         <div className="relative mx-auto grid w-full max-w-[1100px] items-center gap-16 md:grid-cols-2 md:gap-20">
           {/* Left */}
           <div>
-            <h1 className="mb-6 text-5xl leading-[1.06] tracking-tight md:text-6xl lg:text-7xl">
-              <span className="block font-serif text-[6rem] font-bold">
+            <h1 className="text-5xl leading-[1.06] mb-8 tracking-tight md:text-6xl lg:text-7xl">
+              <h2 className="block mb-6 font-serif text-[6rem] font-bold">
                 Private Payroll.
-              </span>
-              <span className="text-5xl font-thin text-muted-foreground">
+              </h2>
+              <h2 className="mb-6 text-5xl font-thin text-muted-foreground">
                 Your team gets paid.
-              </span>
-              <br />
-              <span className="text-4xl font-medium">Nobody else finds out.</span>
+              </h2>
+              <h3 className="text-3xl font-medium">Nobody else finds out.</h3>
             </h1>
             <div className="flex items-center gap-3">
               <Button
@@ -288,7 +287,7 @@ export function LandingPage() {
             Ready when you are.
           </h2>
           <p className="mb-10 text-base leading-relaxed text-muted-foreground">
-            Set it up once and your team gets paid on schedule, every time. Zalary keeps a clean record of every payment without exposing the details to anyone who shouldn't see them. If your payroll needs to be private, it probably should be.
+            Set it up once and your team gets paid on schedule, every time. Zalary keeps a clean record of every payment without exposing the details to anyone who shouldn't see them.
           </p>
           <div className="flex items-center justify-center gap-3">
             <Button
