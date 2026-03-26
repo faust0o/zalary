@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from "react"
 import { createElement } from "react"
+import { apolloClient } from "../lib/apollo"
 import { tribe } from "../lib/tribe"
 import { clearWalletState } from "../lib/zcash-wallet"
 
@@ -67,6 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     await clearWalletState()
+    await apolloClient.clearStore()
     await tribe.logout()
     setUser(null)
   }, [])
