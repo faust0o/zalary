@@ -1,13 +1,13 @@
-import { createBrowserRouter, Navigate } from "react-router-dom"
+import { createBrowserRouter } from "react-router-dom"
 import { Layout } from "./_layout"
+import { DashboardPage } from "./dashboard"
+import { EmployeesPage } from "./employees"
 import { LandingPage } from "./landing"
 import { LoginPage } from "./login"
-import { DashboardPage } from "./dashboard"
-import { PayrollsPage } from "./payrolls"
 import { PayrollDetailPage } from "./payroll-detail"
-import { EmployeesPage } from "./employees"
-import { TransactionsPage } from "./transactions"
+import { PayrollsPage } from "./payrolls"
 import { SettingsPage } from "./settings"
+import { TransactionsPage } from "./transactions"
 
 export const router = createBrowserRouter([
   {
