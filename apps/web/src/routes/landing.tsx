@@ -78,14 +78,14 @@ export function LandingPage() {
           {/* Left */}
           <div>
             <h1 className="mb-6 text-5xl leading-[1.06] tracking-tight md:text-6xl lg:text-7xl">
-              <span className="block font-serif font-bold text-[6rem]">
+              <span className="block font-serif text-[6rem] font-bold">
                 Private Payroll.
               </span>
-              <em className="font-thin text-6xl text-muted-foreground not-italic">
-                Connect nothing.
-              </em>
+              <span className="text-6xl font-thin text-muted-foreground">
+                Your team gets paid.
+              </span>
               <br />
-              <span className="font-medium text-6xl">Document everything.</span>
+              <span className="text-6xl font-medium">Nobody else finds out.</span>
             </h1>
             <div className="flex items-center gap-3">
               <Button
@@ -236,8 +236,7 @@ export function LandingPage() {
               Three steps, then it runs itself.
             </h2>
             <p className="text-base leading-relaxed text-muted-foreground">
-              Add recipients once, set your schedule, and Zalary handles the
-              rest — privately and automatically every cycle.
+              Most payroll tools ask you to connect bank accounts, share employee data with third parties, and trust someone else's servers with your financial records. Zalary works differently. You add wallet addresses, pick a schedule, and payments flow through Zcash's shielded pool where amounts and recipients stay hidden from the public chain. The whole process takes about five minutes to set up, and after that it just runs.
             </p>
           </div>
 
@@ -246,17 +245,17 @@ export function LandingPage() {
               {
                 num: "01",
                 title: "Add your recipients",
-                body: "Enter your team's wallet addresses. They don't connect a wallet, create an account, or sign anything. You paste an address and they receive payment.",
+                body: "Paste in your team's Zcash wallet addresses. That's the entire onboarding process for them. No accounts to create, no apps to install, no permissions to grant.",
               },
               {
                 num: "02",
                 title: "Set amounts and a schedule",
-                body: "Set an amount and a cadence: weekly, bi-weekly, or monthly. Zalary executes at the optimal time based on network conditions.",
+                body: "Choose how much each person gets and how often: every two weeks, monthly, or whatever cadence fits your team. Zalary remembers the schedule.",
               },
               {
                 num: "03",
-                title: "Pay and let it document itself",
-                body: "Payments settle through Zcash's shielded pool. Amounts and addresses stay hidden. Zalary generates a private record for your books.",
+                title: "Scan, pay, done",
+                body: "When it's time to pay, Zalary generates a QR code for each recipient. Scan them with your wallet, and the payments settle through Zcash's shielded pool.",
               },
             ].map((step) => (
               <div
@@ -281,21 +280,15 @@ export function LandingPage() {
       {/* CTA */}
       <section className="relative overflow-hidden border-t px-6 py-28 text-center md:px-12">
         <div className="pointer-events-none absolute top-1/2 left-1/2 h-96 w-[700px] -translate-x-1/2 -translate-y-1/2 bg-[radial-gradient(ellipse,rgba(244,183,40,0.05)_0%,transparent_68%)]" />
-        <div className="relative mx-auto max-w-xl">
+        <div className="relative mx-auto max-w-2xl">
           <div className="mb-5 text-xs font-bold tracking-widest text-primary uppercase">
             Get started
           </div>
-          <h2 className="mb-5 text-4xl font-serif font-medium tracking-tight md:text-7xl">
-            Private payroll,
-            <br />
-            <em className="text-4xl font-thin text-muted-foreground not-italic">
-              running in minutes.
-            </em>
+          <h2 className="mb-5 font-serif text-4xl font-medium tracking-tight md:text-7xl">
+            Ready when you are.
           </h2>
           <p className="mb-10 text-base leading-relaxed text-muted-foreground">
-            You set things up once. Your team receives payments privately. Every
-            transaction is documented automatically — no spreadsheets, no manual
-            effort, no exposure.
+            Set it up once and your team gets paid on schedule, every time. Zalary keeps a clean record of every payment without exposing the details to anyone who shouldn't see them. If your payroll needs to be private, it probably should be.
           </p>
           <div className="flex items-center justify-center gap-3">
             <Button
@@ -307,7 +300,7 @@ export function LandingPage() {
             </Button>
           </div>
           <p className="mt-7 text-xs text-muted-foreground">
-            No credit card. No wallet connection required to get started.
+            Free to start. No wallet connection needed until you're ready to pay.
           </p>
         </div>
       </section>
