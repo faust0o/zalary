@@ -17,13 +17,17 @@ import {
   Calendar,
   LayoutDashboard,
   LogOut,
+  Monitor,
+  Moon,
   Settings,
+  Sun,
   Users,
 } from "lucide-react"
 import { useCallback, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import { MeSidebarDocument } from "../graphql/__generated__/graphql"
 import { useAuth } from "../hooks/use-auth"
+import { useTheme } from "./theme-provider"
 import { useZcashWallet } from "../hooks/use-zcash-wallet"
 import { useZecPrice } from "../hooks/use-zec-price"
 
@@ -72,6 +76,7 @@ export function AppSidebar({
       ? walletBalance.total
       : graphqlBalance
   )
+  const { theme, setTheme } = useTheme()
   const { price: zecPrice, priceHistory } = useZecPrice()
   const [hoverPrice, setHoverPrice] = useState<number | null>(null)
 
@@ -93,8 +98,30 @@ export function AppSidebar({
         <div className="flex items-center gap-3 p-2">
           <img src="/zalary-logo.svg" alt="Zalary" className="size-10" />
           <span className="text-xl font-medium tracking-wide">Zalary</span>
+          <div className="ml-auto flex items-center rounded-full border border-border p-0.5">
+            {([
+              { value: "system" as const, Icon: Monitor, label: "System theme" },
+              { value: "light" as const, Icon: Sun, label: "Light theme" },
+              { value: "dark" as const, Icon: Moon, label: "Dark theme" },
+            ]).map(({ value, Icon, label }) => (
+              <button
+                key={value}
+                type="button"
+                title={label}
+                onClick={() => setTheme(value)}
+                className={cn(
+                  "cursor-pointer rounded-full p-1 transition-colors",
+                  theme === value
+                    ? "bg-border text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Icon className="size-3.5" />
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="inset-0 rounded-lg border border-gray-200 px-2 py-1 shadow-sm dark:border-gray-700">
+        <div className="inset-0 rounded-lg border border-border px-2 py-1 shadow-sm">
           <div className="flex items-center gap-3">
             <Identicon hash={email ?? ""} size={40} className="rounded-lg" />
             <div className="min-w-0 flex-1">
@@ -126,7 +153,7 @@ export function AppSidebar({
                     )}
                   </div>
                   {syncProgress !== null && (
-                    <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                    <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-border">
                       <div
                         className="h-full rounded-full bg-amber-400 transition-all duration-500"
                         style={{ width: `${syncProgress}%` }}
