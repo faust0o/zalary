@@ -21,6 +21,7 @@ interface AuthContextType {
   loading: boolean
   login: () => Promise<void>
   loginWithEmail: (email: string, password: string) => Promise<void>
+  loginWithSocial: (provider: "google" | "discord" | "twitter") => void
   register: (email: string, password: string) => Promise<User>
   registerPasskey: (deviceName?: string) => Promise<void>
   logout: () => Promise<void>
@@ -56,6 +57,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(user)
   }, [])
 
+  const loginWithSocial = useCallback((provider: "google" | "discord" | "twitter") => {
+    tribe.redirectToSocialLogin(provider, {
+      redirectUrl: window.location.origin + "/login",
+    })
+  }, [])
+
   const register = useCallback(async (email: string, password: string) => {
     const { user } = await tribe.register(email, password)
     setUser(user)
@@ -81,6 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loading,
         login,
         loginWithEmail,
+        loginWithSocial,
         register,
         registerPasskey,
         logout,
