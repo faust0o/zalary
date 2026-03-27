@@ -189,7 +189,11 @@ export interface NexusGenFieldTypes {
     createdAt: string; // String!
     email: string; // String!
     employees: NexusGenRootTypes['Employee'][]; // [Employee!]!
+    hasEmployees: boolean; // Boolean!
+    hasPayrolls: boolean; // Boolean!
+    hasVerifiedPayment: boolean; // Boolean!
     id: string; // ID!
+    needsWalkthrough: boolean; // Boolean!
     payrolls: NexusGenRootTypes['Payroll'][]; // [Payroll!]!
     walletBirthdayHeight: number | null; // Int
     zcashViewingKey: string | null; // String
@@ -290,7 +294,11 @@ export interface NexusGenFieldTypeNames {
     createdAt: 'String'
     email: 'String'
     employees: 'Employee'
+    hasEmployees: 'Boolean'
+    hasPayrolls: 'Boolean'
+    hasVerifiedPayment: 'Boolean'
     id: 'ID'
+    needsWalkthrough: 'Boolean'
     payrolls: 'Payroll'
     walletBirthdayHeight: 'Int'
     zcashViewingKey: 'String'
