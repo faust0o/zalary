@@ -1,0 +1,9 @@
+query WalkthroughStatus {
+  me {
+    id
+    needsWalkthrough
+    hasEmployees
+    hasPayrolls
+    hasVerifiedPayment
+  }
+}

@@ -8,6 +8,7 @@ import { useState } from "react"
 import { Navigate, Outlet, useSearchParams } from "react-router-dom"
 import { AppSidebar } from "../components/app-sidebar"
 import { OnboardingModal } from "../components/onboarding-modal"
+import { Walkthrough } from "../components/walkthrough"
 import { MeLayoutDocument } from "../graphql/__generated__/graphql"
 import { useAuth } from "../hooks/use-auth"
 import { ZcashWalletProvider } from "../hooks/use-zcash-wallet"
@@ -62,6 +63,7 @@ export function Layout() {
             onOpenChange={(open) => { if (!open) { setOnboardingDismissed(true); refetchMe() } }}
             skipPasskey={fromRegistration}
           />
+          <Walkthrough />
         </SidebarProvider>
       </TooltipProvider>
     </ZcashWalletProvider>
