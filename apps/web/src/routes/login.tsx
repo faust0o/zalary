@@ -11,7 +11,7 @@ import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
 import { Separator } from "@workspace/ui/components/separator"
 import { Fingerprint } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Navigate, useNavigate } from "react-router-dom"
 import { RegisterUserDocument } from "../graphql/__generated__/graphql"
 import { useAuth } from "../hooks/use-auth"
@@ -55,6 +55,33 @@ export function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const [registerUser] = useMutation(RegisterUserDocument)
+  const [ensuredBackendUser, setEnsuredBackendUser] = useState(false)
+  const ensureStarted = useRef(false)
+
+  // When user exists on mount (e.g. after social login redirect), ensure backend record exists
+  useEffect(() => {
+    if (!user || ensureStarted.current) return
+    ensureStarted.current = true
+    registerUser({
+      variables: {
+        email: user.email ?? `${user.id}@social.zalary`,
+        tribeUserId: user.id,
+      },
+    })
+      .then((result) => {
+        const backendUser = result.data?.registerUser
+        // New user: no viewing key yet → show onboarding
+        if (backendUser && !backendUser.zcashViewingKey) {
+          navigate("/dashboard?onboarding=1", { replace: true })
+        } else {
+          setEnsuredBackendUser(true)
+        }
+      })
+      .catch(() => {
+        // If registration fails, still allow navigation
+        setEnsuredBackendUser(true)
+      })
+  }, [user, registerUser, navigate])
 
   if (loading) {
     return (
@@ -64,8 +91,16 @@ export function LoginPage() {
     )
   }
 
-  if (user) {
+  if (user && ensuredBackendUser) {
     return <Navigate to="/dashboard" replace />
+  }
+
+  if (user) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-muted-foreground text-sm">Signing in...</div>
+      </div>
+    )
   }
 
   async function handlePasskeyLogin() {

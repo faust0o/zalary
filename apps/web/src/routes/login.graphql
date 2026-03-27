@@ -10,6 +10,7 @@ mutation RegisterUser(
   ) {
     id
     email
+    zcashViewingKey
   }
 }
 
