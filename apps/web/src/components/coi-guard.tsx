@@ -25,6 +25,7 @@ export function CoiGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Already isolated — nothing to do
     if (window.crossOriginIsolated) {
+      sessionStorage.removeItem("coi-reload-count")
       setStatus("ready")
       return
     }
@@ -36,6 +37,12 @@ export function CoiGuard({ children }: { children: React.ReactNode }) {
       return
     }
 
+    // Prevent infinite reload loops: track how many times we've reloaded
+    // for COI setup and bail after a few attempts.
+    const RELOAD_KEY = "coi-reload-count"
+    const MAX_RELOADS = 3
+    const reloadCount = parseInt(sessionStorage.getItem(RELOAD_KEY) || "0", 10)
+
     let cancelled = false
 
     async function setup() {
@@ -43,8 +50,16 @@ export function CoiGuard({ children }: { children: React.ReactNode }) {
         // Check if already registered and active
         const existing = await navigator.serviceWorker.getRegistration("/coi-sw.js")
         if (existing?.active) {
-          // SW is active but page isn't isolated — just needs a reload
+          // SW is active but page isn't isolated — needs a reload,
+          // but give up if we've already tried multiple times (e.g. mobile
+          // browsers that don't support cross-origin isolation via SW).
+          if (reloadCount >= MAX_RELOADS) {
+            setStatus("failed")
+            setError("Your browser could not enable cross-origin isolation. Try a desktop browser like Chrome or Edge.")
+            return
+          }
           setStatus("reloading")
+          sessionStorage.setItem(RELOAD_KEY, String(reloadCount + 1))
           window.location.reload()
           return
         }
@@ -68,7 +83,13 @@ export function CoiGuard({ children }: { children: React.ReactNode }) {
         if (cancelled) return
 
         // Reload to apply cross-origin isolation
+        if (reloadCount >= MAX_RELOADS) {
+          setStatus("failed")
+          setError("Your browser could not enable cross-origin isolation. Try a desktop browser like Chrome or Edge.")
+          return
+        }
         setStatus("reloading")
+        sessionStorage.setItem(RELOAD_KEY, String(reloadCount + 1))
         window.location.reload()
       } catch (e) {
         if (cancelled) return
