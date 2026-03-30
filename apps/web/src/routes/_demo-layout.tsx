@@ -13,6 +13,7 @@ import {
 import { Outlet } from "react-router-dom"
 import { AppSidebar } from "../components/app-sidebar"
 import { AuthModal } from "../components/auth-modal"
+import { MobileGuard } from "../components/mobile-guard"
 import { DemoProvider, useDemo } from "../components/demo-context"
 import { DEMO_EMAIL, DEMO_WALLET_BALANCE } from "../lib/demo-data"
 
@@ -27,6 +28,7 @@ function DemoLayoutInner() {
   const { authModalOpen, setAuthModalOpen, promptLogin } = useDemo()
 
   return (
+    <MobileGuard>
     <TooltipProvider>
       <SidebarProvider>
         <AppSidebar
@@ -51,6 +53,7 @@ function DemoLayoutInner() {
         <AuthModal open={authModalOpen} onOpenChange={setAuthModalOpen} />
       </SidebarProvider>
     </TooltipProvider>
+    </MobileGuard>
   )
 }
 

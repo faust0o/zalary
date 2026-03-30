@@ -7,6 +7,8 @@ import { TooltipProvider } from "@workspace/ui/components/tooltip"
 import { useState } from "react"
 import { Navigate, Outlet, useSearchParams } from "react-router-dom"
 import { AppSidebar } from "../components/app-sidebar"
+import { CoiGuard } from "../components/coi-guard"
+import { MobileGuard } from "../components/mobile-guard"
 import { OnboardingModal } from "../components/onboarding-modal"
 import { Walkthrough } from "../components/walkthrough"
 import { MeLayoutDocument } from "../graphql/__generated__/graphql"
@@ -47,25 +49,29 @@ export function Layout() {
   const birthdayHeight = meData?.me?.walletBirthdayHeight ?? null
 
   return (
-    <ZcashWalletProvider ufvk={ufvk} birthdayHeight={birthdayHeight}>
-      <TooltipProvider>
-        <SidebarProvider>
-          <AppSidebar />
-          <SidebarInset>
-            <main className="flex-1 overflow-auto bg-gray-50 p-6 dark:bg-neutral-900">
-              <div className="mx-auto w-full max-w-5xl">
-                <Outlet />
-              </div>
-            </main>
-          </SidebarInset>
-          <OnboardingModal
-            open={onboardingOpen}
-            onOpenChange={(open) => { if (!open) { setOnboardingDismissed(true); refetchMe() } }}
-            skipPasskey={fromRegistration}
-          />
-          <Walkthrough />
-        </SidebarProvider>
-      </TooltipProvider>
-    </ZcashWalletProvider>
+    <MobileGuard>
+      <CoiGuard>
+        <ZcashWalletProvider ufvk={ufvk} birthdayHeight={birthdayHeight}>
+          <TooltipProvider>
+            <SidebarProvider>
+              <AppSidebar />
+              <SidebarInset>
+                <main className="flex-1 overflow-auto bg-gray-50 p-6 dark:bg-neutral-900">
+                  <div className="mx-auto w-full max-w-5xl">
+                    <Outlet />
+                  </div>
+                </main>
+              </SidebarInset>
+              <OnboardingModal
+                open={onboardingOpen}
+                onOpenChange={(open) => { if (!open) { setOnboardingDismissed(true); refetchMe() } }}
+                skipPasskey={fromRegistration}
+              />
+              <Walkthrough />
+            </SidebarProvider>
+          </TooltipProvider>
+        </ZcashWalletProvider>
+      </CoiGuard>
+    </MobileGuard>
   )
 }

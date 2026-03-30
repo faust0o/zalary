@@ -4,7 +4,6 @@ import { RouterProvider } from "react-router-dom"
 import { ApolloProvider } from "@apollo/client/react"
 
 import "@workspace/ui/globals.css"
-import { CoiGuard } from "@/components/coi-guard"
 import { ThemeProvider } from "@/components/theme-provider.tsx"
 import { AuthProvider } from "@/hooks/use-auth"
 import { ZecPriceProvider } from "@/hooks/use-zec-price"
@@ -14,15 +13,13 @@ import { router } from "@/routes/index"
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ThemeProvider>
-      <CoiGuard>
-        <ApolloProvider client={apolloClient}>
-          <AuthProvider>
-            <ZecPriceProvider>
-              <RouterProvider router={router} />
-            </ZecPriceProvider>
-          </AuthProvider>
-        </ApolloProvider>
-      </CoiGuard>
+      <ApolloProvider client={apolloClient}>
+        <AuthProvider>
+          <ZecPriceProvider>
+            <RouterProvider router={router} />
+          </ZecPriceProvider>
+        </AuthProvider>
+      </ApolloProvider>
     </ThemeProvider>
   </StrictMode>
 )
