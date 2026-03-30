@@ -27,9 +27,9 @@ import { useCallback, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import { MeSidebarDocument } from "../graphql/__generated__/graphql"
 import { useAuth } from "../hooks/use-auth"
-import { useTheme } from "./theme-provider"
 import { useZcashWallet } from "../hooks/use-zcash-wallet"
 import { useZecPrice } from "../hooks/use-zec-price"
+import { useTheme } from "./theme-provider"
 
 const defaultNavItems = [
   { title: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
@@ -67,15 +67,25 @@ export function AppSidebar({
   const { user, logout } = useAuth()
   const { data } = useQuery(MeSidebarDocument, { skip: !user })
 
-  const email = overrideEmail ?? (data as { me?: { email: string } })?.me?.email ?? user?.email
-  const { balance: walletBalance, syncing, lastSyncedHeight, syncProgress, initialized: walletInitialized, error: walletError } = useZcashWallet()
+  const email =
+    overrideEmail ??
+    (data as { me?: { email: string } })?.me?.email ??
+    user?.email
+  const {
+    balance: walletBalance,
+    syncing,
+    lastSyncedHeight,
+    syncProgress,
+    initialized: walletInitialized,
+    error: walletError,
+  } = useZcashWallet()
   const graphqlBalance =
     (data as { zecBalance?: { available: number } })?.zecBalance?.available ?? 0
-  const balance = overrideBalance ?? (
-    lastSyncedHeight !== null && walletBalance !== null
+  const balance =
+    overrideBalance ??
+    (lastSyncedHeight !== null && walletBalance !== null
       ? walletBalance.total
-      : graphqlBalance
-  )
+      : graphqlBalance)
   const { theme, setTheme } = useTheme()
   const { price: zecPrice, priceHistory } = useZecPrice()
   const [hoverPrice, setHoverPrice] = useState<number | null>(null)
@@ -99,11 +109,15 @@ export function AppSidebar({
           <img src="/zalary-logo.svg" alt="Zalary" className="size-10" />
           <span className="text-xl font-medium tracking-wide">Zalary</span>
           <div className="ml-auto flex items-center rounded-full border border-border p-0.5">
-            {([
-              { value: "system" as const, Icon: Monitor, label: "System theme" },
+            {[
+              {
+                value: "system" as const,
+                Icon: Monitor,
+                label: "System theme",
+              },
               { value: "light" as const, Icon: Sun, label: "Light theme" },
               { value: "dark" as const, Icon: Moon, label: "Dark theme" },
-            ]).map(({ value, Icon, label }) => (
+            ].map(({ value, Icon, label }) => (
               <button
                 key={value}
                 type="button"
@@ -123,7 +137,15 @@ export function AppSidebar({
         </div>
         <div className="inset-0 rounded-lg border border-border px-2 py-1 shadow-sm">
           <div className="flex items-center gap-3">
-            <Identicon hash={(data as { me?: { id: string } })?.me?.id ?? user?.id ?? ""} size={40} className="rounded-lg" />
+            <Identicon
+              hash={
+                (data as { me?: { id: string } })?.me?.id ??
+                user?.id ??
+                email
+              }
+              size={40}
+              className="rounded-lg"
+            />
             <div className="min-w-0 flex-1">
               <p className="mt-1 truncate text-xs text-muted-foreground">
                 {email}
@@ -140,7 +162,9 @@ export function AppSidebar({
           {!hideWalletSync && (
             <>
               {walletError ? (
-                <p className="mt-1.5 truncate text-xs text-red-500">{walletError}</p>
+                <p className="mt-1.5 truncate text-xs text-red-500">
+                  {walletError}
+                </p>
               ) : syncing ? (
                 <div className="mt-1.5">
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -148,9 +172,7 @@ export function AppSidebar({
                       <span className="inline-block size-1.5 animate-pulse rounded-full bg-amber-400" />
                       Syncing wallet...
                     </span>
-                    {syncProgress !== null && (
-                      <span>{syncProgress}%</span>
-                    )}
+                    {syncProgress !== null && <span>{syncProgress}%</span>}
                   </div>
                   {syncProgress !== null && (
                     <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-border">
@@ -213,10 +235,13 @@ export function AppSidebar({
               <SidebarMenuItem>
                 <SidebarMenuButton
                   size="lg"
-                  onClick={footerAction?.onClick ?? (async () => {
-                    await logout()
-                    navigate("/login")
-                  })}
+                  onClick={
+                    footerAction?.onClick ??
+                    (async () => {
+                      await logout()
+                      navigate("/login")
+                    })
+                  }
                   className="my-1 cursor-pointer text-muted-foreground"
                 >
                   {footerAction ? (
@@ -224,7 +249,9 @@ export function AppSidebar({
                   ) : (
                     <LogOut className="!size-5" />
                   )}
-                  <span className="text-sm">{footerAction?.label ?? "Log out"}</span>
+                  <span className="text-sm">
+                    {footerAction?.label ?? "Log out"}
+                  </span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
@@ -239,16 +266,21 @@ export function AppSidebar({
                 ZEC/USD
               </span>
               <div className="flex items-baseline gap-1.5">
-                {!hoverPrice && priceHistory.length > 1 && (() => {
-                  const first = priceHistory[0].price
-                  const change = ((zecPrice - first) / first) * 100
-                  const isUp = change >= 0
-                  return (
-                    <span className={`text-xs font-medium ${isUp ? "text-green-600" : "text-red-500"}`}>
-                      {isUp ? "+" : ""}{change.toFixed(2)}%
-                    </span>
-                  )
-                })()}
+                {!hoverPrice &&
+                  priceHistory.length > 1 &&
+                  (() => {
+                    const first = priceHistory[0].price
+                    const change = ((zecPrice - first) / first) * 100
+                    const isUp = change >= 0
+                    return (
+                      <span
+                        className={`text-xs font-medium ${isUp ? "text-green-600" : "text-red-500"}`}
+                      >
+                        {isUp ? "+" : ""}
+                        {change.toFixed(2)}%
+                      </span>
+                    )
+                  })()}
                 <span className="text-xs font-semibold">
                   $
                   {(hoverPrice ?? zecPrice).toLocaleString(undefined, {
@@ -280,9 +312,7 @@ export function AppSidebar({
                     )
                     .join(" ")
                   const isUp = prices[len - 1] >= prices[0]
-                  const color = isUp
-                    ? "rgb(34, 197, 94)"
-                    : "rgb(239, 68, 68)"
+                  const color = isUp ? "rgb(34, 197, 94)" : "rgb(239, 68, 68)"
                   const fillPoints = `0,40 ${points} 200,40`
                   return (
                     <>
@@ -292,11 +322,7 @@ export function AppSidebar({
                         strokeWidth="1.5"
                         points={points}
                       />
-                      <polygon
-                        fill={color}
-                        opacity="0.1"
-                        points={fillPoints}
-                      />
+                      <polygon fill={color} opacity="0.1" points={fillPoints} />
                     </>
                   )
                 })()}
