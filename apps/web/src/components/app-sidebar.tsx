@@ -123,7 +123,7 @@ export function AppSidebar({
         </div>
         <div className="inset-0 rounded-lg border border-border px-2 py-1 shadow-sm">
           <div className="flex items-center gap-3">
-            <Identicon hash={user?.id ?? ""} size={40} className="rounded-lg" />
+            <Identicon hash={(data as { me?: { id: string } })?.me?.id ?? user?.id ?? ""} size={40} className="rounded-lg" />
             <div className="min-w-0 flex-1">
               <p className="mt-1 truncate text-xs text-muted-foreground">
                 {email}
