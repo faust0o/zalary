@@ -4,9 +4,12 @@ import { Separator } from "@workspace/ui/components/separator"
 import {
   ArrowRight,
   Calendar,
+  EyeOff,
+  Fingerprint,
   Monitor,
   Moon,
   Pencil,
+  ShieldCheck,
   Sun,
   Users,
 } from "lucide-react"
@@ -342,6 +345,74 @@ export function LandingPage() {
                 <p className="text-sm leading-relaxed text-muted-foreground">
                   {step.body}
                 </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Layered privacy */}
+      <section className="border-t">
+        <div className="mx-auto max-w-[1200px] px-6 py-28 md:px-12">
+          <div className="mb-4 text-xs font-bold tracking-widest text-primary uppercase">
+            Layered privacy
+          </div>
+          <div className="mb-16 max-w-xl">
+            <h2 className="mb-5 font-serif text-4xl font-light tracking-tight md:text-6xl">
+              Private at every level.
+            </h2>
+            <p className="text-base leading-relaxed text-muted-foreground">
+              Privacy isn't a single feature you bolt on at the end. Zalary is
+              built so that your identity, your data, and your transactions are
+              each protected independently. Even if one layer were compromised,
+              the others still hold.
+            </p>
+          </div>
+
+          <div className="grid overflow-hidden rounded-xl border md:grid-cols-3">
+            {[
+              {
+                Icon: Fingerprint,
+                title: "Pseudonymous by default",
+                body: "Sign in through Tribe, a pseudonymous authentication layer. No email address, no tracking cookies, no personal identifiers stored on our side. Your account is a keypair, not a profile.",
+                link: {
+                  href: "https://docs.utopian.build/auth#privacy-model",
+                  label: "Learn about Tribe",
+                },
+              },
+              {
+                Icon: EyeOff,
+                title: "Non-custodial data model",
+                body: "Zalary stores only the viewing key you provide. There's no personally identifiable information on our servers, which means the key itself can never be traced back to a real-world identity.",
+              },
+              {
+                Icon: ShieldCheck,
+                title: "Shielded transactions",
+                body: "Payments settle through Zcash's shielded pool, where amounts and recipients are encrypted on-chain. The salary you pay each team member stays visible only to you and them.",
+              },
+            ].map((layer) => (
+              <div
+                key={layer.title}
+                className="relative border-r bg-card p-10 last:border-r-0"
+              >
+                <layer.Icon className="mb-4 size-8 text-primary/60" />
+                <h3 className="mb-3 text-lg font-light tracking-tight">
+                  {layer.title}
+                </h3>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  {layer.body}
+                </p>
+                {"link" in layer && layer.link && (
+                  <a
+                    href={layer.link.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-primary transition-colors hover:text-primary/80"
+                  >
+                    {layer.link.label}
+                    <ArrowRight className="size-3" />
+                  </a>
+                )}
               </div>
             ))}
           </div>
