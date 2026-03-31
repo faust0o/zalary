@@ -1,9 +1,12 @@
+import { useEffect, useState } from "react"
+import { Accordion } from "radix-ui"
 import { Button } from "@workspace/ui/components/button"
 import { Card } from "@workspace/ui/components/card"
 import { Separator } from "@workspace/ui/components/separator"
 import {
   ArrowRight,
   Calendar,
+  ChevronDown,
   EyeOff,
   Fingerprint,
   Monitor,
@@ -18,10 +21,28 @@ import { Navigate, useNavigate } from "react-router-dom"
 import { useTheme } from "../components/theme-provider"
 import { useAuth } from "../hooks/use-auth"
 
+const MOBILE_BREAKPOINT = 768
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(
+    () => window.innerWidth < MOBILE_BREAKPOINT
+  )
+
+  useEffect(() => {
+    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
+    const onChange = (e: MediaQueryListEvent) => setIsMobile(e.matches)
+    mql.addEventListener("change", onChange)
+    return () => mql.removeEventListener("change", onChange)
+  }, [])
+
+  return isMobile
+}
+
 export function LandingPage() {
   const { user, loading } = useAuth()
   const navigate = useNavigate()
   const { theme, setTheme } = useTheme()
+  const isMobile = useIsMobile()
 
   if (loading) {
     return (
@@ -71,13 +92,25 @@ export function LandingPage() {
               </button>
             ))}
           </div>
-          <Button variant="ghost" size="md" onClick={() => navigate("/login")}>
+          <Button
+            variant="ghost"
+            size="md"
+            onClick={() => navigate("/login")}
+            className="hidden md:inline-flex"
+          >
             Sign in
           </Button>
-          <Button size="md" onClick={() => navigate("/demo/dashboard")}>
-            Launch App
-            <ArrowRight className="ml-1 size-4" />
-          </Button>
+          {isMobile ? (
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Monitor className="size-3.5" />
+              Desktop only
+            </span>
+          ) : (
+            <Button size="md" onClick={() => navigate("/demo/dashboard")}>
+              Launch App
+              <ArrowRight className="ml-1 size-4" />
+            </Button>
+          )}
         </div>
       </nav>
 
@@ -108,14 +141,21 @@ export function LandingPage() {
               </h2>
               <h3 className="text-3xl font-medium">Nobody else finds out.</h3>
             </h1>
-            <div className="flex items-center gap-3">
-              <Button
-                size="lg"
-                onClick={() => navigate("/demo/dashboard")}
-                className="shadow-[0_0_36px_rgba(244,183,40,0.18)]"
-              >
-                Start paying privately
-              </Button>
+            <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+              {isMobile ? (
+                <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Monitor className="size-4" />
+                  Available on desktop browsers
+                </p>
+              ) : (
+                <Button
+                  size="lg"
+                  onClick={() => navigate("/demo/dashboard")}
+                  className="shadow-[0_0_36px_rgba(244,183,40,0.18)]"
+                >
+                  Start paying privately
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="lg"
@@ -369,9 +409,15 @@ export function LandingPage() {
             </p>
           </div>
 
-          <div className="grid overflow-hidden rounded-xl border md:grid-cols-3">
+          <Accordion.Root
+            type="single"
+            collapsible
+            defaultValue="pseudonymous"
+            className="space-y-3"
+          >
             {[
               {
+                value: "pseudonymous",
                 Icon: Fingerprint,
                 title: "Pseudonymous by default",
                 body: "Sign in through Tribe, a pseudonymous authentication layer. No email address, no tracking cookies, no personal identifiers stored on our side. Your account is a keypair, not a profile.",
@@ -381,41 +427,53 @@ export function LandingPage() {
                 },
               },
               {
+                value: "non-custodial",
                 Icon: EyeOff,
                 title: "Non-custodial data model",
                 body: "Zalary stores only the viewing key you provide. There's no personally identifiable information on our servers, which means the key itself can never be traced back to a real-world identity.",
               },
               {
+                value: "shielded",
                 Icon: ShieldCheck,
                 title: "Shielded transactions",
                 body: "Payments settle through Zcash's shielded pool, where amounts and recipients are encrypted on-chain. The salary you pay each team member stays visible only to you and them.",
               },
             ].map((layer) => (
-              <div
-                key={layer.title}
-                className="relative border-r bg-card p-10 last:border-r-0"
+              <Accordion.Item
+                key={layer.value}
+                value={layer.value}
+                className="rounded-xl border bg-card"
               >
-                <layer.Icon className="mb-4 size-8 text-primary/60" />
-                <h3 className="mb-3 text-lg font-light tracking-tight">
-                  {layer.title}
-                </h3>
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  {layer.body}
-                </p>
-                {"link" in layer && layer.link && (
-                  <a
-                    href={layer.link.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-primary transition-colors hover:text-primary/80"
-                  >
-                    {layer.link.label}
-                    <ArrowRight className="size-3" />
-                  </a>
-                )}
-              </div>
+                <Accordion.Trigger className="group flex w-full cursor-pointer items-center gap-5 p-6 text-left md:p-8">
+                  <div className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                    <layer.Icon className="size-7 text-primary" />
+                  </div>
+                  <h3 className="flex-1 text-xl font-medium tracking-tight md:text-2xl">
+                    {layer.title}
+                  </h3>
+                  <ChevronDown className="size-5 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                </Accordion.Trigger>
+                <Accordion.Content className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                  <div className="px-6 pb-6 pl-[5.75rem] md:px-8 md:pb-8 md:pl-[6.75rem]">
+                    <p className="max-w-lg text-sm leading-relaxed text-muted-foreground md:text-base">
+                      {layer.body}
+                    </p>
+                    {"link" in layer && layer.link && (
+                      <a
+                        href={layer.link.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary transition-colors hover:text-primary/80"
+                      >
+                        {layer.link.label}
+                        <ArrowRight className="size-3.5" />
+                      </a>
+                    )}
+                  </div>
+                </Accordion.Content>
+              </Accordion.Item>
             ))}
-          </div>
+          </Accordion.Root>
         </div>
       </section>
 
@@ -434,19 +492,28 @@ export function LandingPage() {
             Zalary keeps a clean record of every payment without exposing the
             details to anyone who shouldn't see them.
           </p>
-          <div className="flex items-center justify-center gap-3">
-            <Button
-              size="lg"
-              onClick={() => navigate("/demo/dashboard")}
-              className="shadow-[0_0_48px_rgba(244,183,40,0.2)]"
-            >
-              Launch Zalary
-            </Button>
-          </div>
-          <p className="mt-7 text-xs text-muted-foreground">
-            Free to start. No wallet connection needed until you're ready to
-            pay.
-          </p>
+          {isMobile ? (
+            <p className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Monitor className="size-4" />
+              Visit on a desktop browser to get started
+            </p>
+          ) : (
+            <>
+              <div className="flex items-center justify-center gap-3">
+                <Button
+                  size="lg"
+                  onClick={() => navigate("/demo/dashboard")}
+                  className="shadow-[0_0_48px_rgba(244,183,40,0.2)]"
+                >
+                  Launch Zalary
+                </Button>
+              </div>
+              <p className="mt-7 text-xs text-muted-foreground">
+                Free to start. No wallet connection needed until you're ready to
+                pay.
+              </p>
+            </>
+          )}
         </div>
       </section>
 
