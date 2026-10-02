@@ -1,6 +1,6 @@
 # zcash-view-wasm
 
-A Zcash view-only light wallet that runs entirely in the browser. Give it a unified full viewing key and a lightwalletd gRPC-web endpoint, and it syncs the blockchain in a Web Worker, tracking balances and detecting sent transactions via nullifier analysis. Built on the Rust `zcash_client_backend` and `zcash_client_memory` crates, compiled to WebAssembly with `wasm-pack`.
+A Zcash view-only light wallet that runs entirely in the browser. Give it a unified full viewing key and a lightwalletd gRPC-web endpoint, and it syncs the blockchain in a Web Worker, tracking balances and detecting sent transactions via nullifier analysis. It scans the Sapling, Orchard and Ironwood (NU6.3, mainnet height 3,428,143) shielded pools; Ironwood notes are found with the UFVK's Orchard key. Built on the Rust `zcash_client_backend` (0.24) and `zcash_client_memory` crates, compiled to WebAssembly with `wasm-pack`. The lightwalletd server must speak lightwallet-protocol v0.5 (Ironwood compact actions, tree state and subtree roots).
 
 ## Install
 

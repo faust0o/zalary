@@ -9,14 +9,14 @@ export const createPayroll = mutationField("createPayroll", {
     employeeIds: nonNull(list(nonNull(idArg()))),
   },
   async resolve(_parent, args, ctx) {
-    if (!ctx.userId) throw new Error("Not authenticated")
+    if (!ctx.accountId) throw new Error("Not authenticated")
 
     return ctx.prisma.payroll.create({
       data: {
         name: args.name,
         schedule: args.schedule,
         customDays: args.customDays,
-        userId: ctx.userId,
+        userId: ctx.accountId,
         employees: {
           create: args.employeeIds.map((employeeId: string) => ({
             employeeId,
@@ -37,9 +37,9 @@ export const updatePayroll = mutationField("updatePayroll", {
     employeeIds: list(nonNull(idArg())),
   },
   async resolve(_parent, args, ctx) {
-    if (!ctx.userId) throw new Error("Not authenticated")
+    if (!ctx.accountId) throw new Error("Not authenticated")
     const payroll = await ctx.prisma.payroll.findFirst({
-      where: { id: args.id, userId: ctx.userId },
+      where: { id: args.id, userId: ctx.accountId },
     })
     if (!payroll) throw new Error("Payroll not found")
 
@@ -72,9 +72,9 @@ export const deletePayroll = mutationField("deletePayroll", {
   type: nonNull("Payroll"),
   args: { id: nonNull(idArg()) },
   async resolve(_parent, args, ctx) {
-    if (!ctx.userId) throw new Error("Not authenticated")
+    if (!ctx.accountId) throw new Error("Not authenticated")
     const payroll = await ctx.prisma.payroll.findFirst({
-      where: { id: args.id, userId: ctx.userId },
+      where: { id: args.id, userId: ctx.accountId },
     })
     if (!payroll) throw new Error("Payroll not found")
 

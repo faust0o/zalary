@@ -24,7 +24,8 @@ export interface PayrollsPayroll {
 
 export interface PayrollsViewProps {
   payrolls: PayrollsPayroll[]
-  walletBalance: number
+  /** Null when unknown, e.g. for delegates, who have no wallet. */
+  walletBalance: number | null
   zecPrice: number | null
   loading: boolean
   onDisburse?: (payrollId: string | null) => void
@@ -58,7 +59,9 @@ export function PayrollsView({
   }, [totalSettlementUsd, zecPrice])
 
   const hasSufficientFunds =
-    totalSettlementZec !== null && walletBalance >= totalSettlementZec
+    totalSettlementZec !== null &&
+    walletBalance !== null &&
+    walletBalance >= totalSettlementZec
 
   const totalRecipients = useMemo(() => {
     const ids = new Set<string>()
@@ -127,24 +130,30 @@ export function PayrollsView({
                 {totalRecipients}
               </p>
             </div>
-            <div>
-              <p className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
-                ZEC Balance
-              </p>
-              <p className="mt-1 text-xl font-light">
-                {walletBalance.toFixed(4)} ZEC
-              </p>
-            </div>
-            <div>
-              <p className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
-                Status
-              </p>
-              <p
-                className={`mt-1 text-xl font-semibold ${hasSufficientFunds ? "text-green-600" : "text-red-600"}`}
-              >
-                {hasSufficientFunds ? "Sufficient Funds" : "Insufficient Funds"}
-              </p>
-            </div>
+            {walletBalance !== null && (
+              <>
+                <div>
+                  <p className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
+                    ZEC Balance
+                  </p>
+                  <p className="mt-1 text-xl font-light">
+                    {walletBalance.toFixed(4)} ZEC
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
+                    Status
+                  </p>
+                  <p
+                    className={`mt-1 text-xl font-semibold ${hasSufficientFunds ? "text-green-600" : "text-red-600"}`}
+                  >
+                    {hasSufficientFunds
+                      ? "Sufficient Funds"
+                      : "Insufficient Funds"}
+                  </p>
+                </div>
+              </>
+            )}
           </div>
         </CardContent>
       </Card>

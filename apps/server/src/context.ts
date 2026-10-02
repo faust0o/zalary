@@ -1,54 +1,18 @@
 import { PrismaClient } from "@prisma/client"
-import { createHmac, timingSafeEqual } from "crypto"
 import type { Request } from "express"
+import { getAuthSecret, verifyAuthToken } from "./auth/token.js"
 
 const prisma = new PrismaClient()
 
 export interface Context {
   prisma: PrismaClient
+  /** The signed-in user. */
   userId: string | null
-}
-
-interface TribeJwtPayload {
-  sub: string
-  email: string | null
-  pseudonymousId: string
-  authMethod: string
-  role: string | null
-  siteId: string
-  iat: number
-  exp: number
-}
-
-function verifyTribeToken(token: string, secret: string): TribeJwtPayload | null {
-  const parts = token.split(".")
-  if (parts.length !== 3) return null
-
-  const [headerB64, payloadB64, signatureB64] = parts
-
-  // Verify HMAC-SHA256 signature
-  const data = `${headerB64}.${payloadB64}`
-  const expectedSig = createHmac("sha256", secret)
-    .update(data)
-    .digest("base64url")
-
-  const sigBuffer = Buffer.from(signatureB64, "base64url")
-  const expectedBuffer = Buffer.from(expectedSig, "base64url")
-
-  if (sigBuffer.length !== expectedBuffer.length) return null
-  if (!timingSafeEqual(sigBuffer, expectedBuffer)) return null
-
-  // Decode payload
-  const payload = JSON.parse(
-    Buffer.from(payloadB64, "base64url").toString("utf-8")
-  ) as TribeJwtPayload
-
-  // Check expiration
-  if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
-    return null
-  }
-
-  return payload
+  /**
+   * The account whose payroll data this request reads and writes: the user's
+   * own, or their owner's when the user is a delegate.
+   */
+  accountId: string | null
 }
 
 export async function createContext({
@@ -57,38 +21,26 @@ export async function createContext({
   req: Request
 }): Promise<Context> {
   const token = req.headers.authorization?.replace("Bearer ", "")
-  const tribeKey =
-    process.env.TRIBE_KEY || process.env.TRIBE_SECRET_KEY || ""
+  const secret = getAuthSecret()
 
   let userId: string | null = null
+  let accountId: string | null = null
 
-  if (token && tribeKey) {
-    const payload = verifyTribeToken(token, tribeKey)
-
+  if (token && secret) {
+    const payload = verifyAuthToken(token, secret)
     if (payload) {
-      // Look up or auto-create local user from Tribe JWT
       const user = await prisma.user.findUnique({
-        where: { tribeUserId: payload.sub },
+        where: { id: payload.sub },
+        select: { id: true, tokenVersion: true, ownerId: true },
       })
-
-      if (user) {
+      if (user && user.tokenVersion === payload.tv) {
         userId = user.id
-      } else if (payload.email) {
-        // Auto-create user on first verified login
-        const newUser = await prisma.user.upsert({
-          where: { email: payload.email },
-          update: { tribeUserId: payload.sub },
-          create: {
-            email: payload.email,
-            tribeUserId: payload.sub,
-          },
-        })
-        userId = newUser.id
+        accountId = user.ownerId ?? user.id
       }
     }
   }
 
-  return { prisma, userId }
+  return { prisma, userId, accountId }
 }
 
 export { prisma }

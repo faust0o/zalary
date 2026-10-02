@@ -10,7 +10,7 @@ export const createEmployee = mutationField("createEmployee", {
     salaryCurrency: arg({ type: "SalaryCurrency" }),
   },
   resolve(_parent, args, ctx) {
-    if (!ctx.userId) throw new Error("Not authenticated")
+    if (!ctx.accountId) throw new Error("Not authenticated")
     return ctx.prisma.employee.create({
       data: {
         name: args.name,
@@ -18,7 +18,7 @@ export const createEmployee = mutationField("createEmployee", {
         walletAddress: args.walletAddress,
         salaryAmount: args.salaryAmount,
         salaryCurrency: args.salaryCurrency ?? "USD",
-        userId: ctx.userId,
+        userId: ctx.accountId,
       },
     })
   },
@@ -35,9 +35,9 @@ export const updateEmployee = mutationField("updateEmployee", {
     salaryCurrency: arg({ type: "SalaryCurrency" }),
   },
   async resolve(_parent, args, ctx) {
-    if (!ctx.userId) throw new Error("Not authenticated")
+    if (!ctx.accountId) throw new Error("Not authenticated")
     const employee = await ctx.prisma.employee.findFirst({
-      where: { id: args.id, userId: ctx.userId },
+      where: { id: args.id, userId: ctx.accountId },
     })
     if (!employee) throw new Error("Employee not found")
 
@@ -66,7 +66,7 @@ export const importEmployeesCsv = mutationField("importEmployeesCsv", {
     csvContent: nonNull(stringArg()),
   },
   async resolve(_parent, args, ctx) {
-    if (!ctx.userId) throw new Error("Not authenticated")
+    if (!ctx.accountId) throw new Error("Not authenticated")
 
     const lines = args.csvContent
       .split(/\r?\n/)
@@ -118,7 +118,7 @@ export const importEmployeesCsv = mutationField("importEmployeesCsv", {
             walletAddress: emp.walletAddress,
             salaryAmount: emp.salaryAmount,
             salaryCurrency: "USD",
-            userId: ctx.userId!,
+            userId: ctx.accountId!,
           },
         })
       )
@@ -132,9 +132,9 @@ export const deleteEmployee = mutationField("deleteEmployee", {
   type: nonNull("Employee"),
   args: { id: nonNull(idArg()) },
   async resolve(_parent, args, ctx) {
-    if (!ctx.userId) throw new Error("Not authenticated")
+    if (!ctx.accountId) throw new Error("Not authenticated")
     const employee = await ctx.prisma.employee.findFirst({
-      where: { id: args.id, userId: ctx.userId },
+      where: { id: args.id, userId: ctx.accountId },
     })
     if (!employee) throw new Error("Employee not found")
 

@@ -1,4 +1,5 @@
 import { useQuery } from "@apollo/client/react"
+import { Button } from "@workspace/ui/components/button"
 import { Identicon } from "@workspace/ui/components/Identicon"
 import {
   Sidebar,
@@ -15,10 +16,12 @@ import { cn } from "@workspace/ui/lib/utils"
 import {
   ArrowLeftRight,
   Calendar,
+  Handshake,
   LayoutDashboard,
   LogOut,
   Monitor,
   Moon,
+  Plus,
   Settings,
   Sun,
   Users,
@@ -30,6 +33,7 @@ import { useAuth } from "../hooks/use-auth"
 import { useZcashWallet } from "../hooks/use-zcash-wallet"
 import { useZecPrice } from "../hooks/use-zec-price"
 import { useTheme } from "./theme-provider"
+import { TopUpModal } from "./top-up-modal"
 
 const defaultNavItems = [
   { title: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
@@ -38,9 +42,15 @@ const defaultNavItems = [
   { title: "Transactions", icon: ArrowLeftRight, path: "/transactions" },
 ]
 
+const delegationsNavItem = {
+  title: "Delegations",
+  icon: Handshake,
+  path: "/delegations",
+}
+
 export interface AppSidebarProps {
-  /** Override the displayed email */
-  overrideEmail?: string
+  /** Override the displayed username */
+  overrideUsername?: string
   /** Override the displayed ZEC balance */
   overrideBalance?: number
   /** Override nav item paths (e.g. prefix with /demo) */
@@ -51,26 +61,38 @@ export interface AppSidebarProps {
   hideWalletSync?: boolean
   /** Hide settings nav item */
   hideSettings?: boolean
+  /** Override the Top Up button action (defaults to the swap dialog) */
+  onTopUp?: () => void
 }
 
 export function AppSidebar({
-  overrideEmail,
+  overrideUsername,
   overrideBalance,
-  navItems = defaultNavItems,
+  navItems,
   footerAction,
   hideWalletSync,
   hideSettings,
+  onTopUp,
 }: AppSidebarProps = {}) {
   const location = useLocation()
   const navigate = useNavigate()
 
   const { user, logout } = useAuth()
   const { data } = useQuery(MeSidebarDocument, { skip: !user })
+  // Delegates have an owner. They can't manage delegations, and without the
+  // owner's viewing key their browser has no wallet to show a balance from.
+  const owner = data?.me?.owner
+  const isAccountOwner = data?.me != null && owner == null
+  const items =
+    navItems ??
+    (isAccountOwner
+      ? [...defaultNavItems, delegationsNavItem]
+      : defaultNavItems)
 
-  const email =
-    overrideEmail ??
-    (data as { me?: { email: string } })?.me?.email ??
-    user?.email
+  const username =
+    overrideUsername ??
+    (data as { me?: { username: string } })?.me?.username ??
+    user?.username
   const {
     balance: walletBalance,
     syncing,
@@ -89,6 +111,7 @@ export function AppSidebar({
   const { theme, setTheme } = useTheme()
   const { price: zecPrice, priceHistory } = useZecPrice()
   const [hoverPrice, setHoverPrice] = useState<number | null>(null)
+  const [topUpOpen, setTopUpOpen] = useState(false)
 
   const handleChartHover = useCallback(
     (e: React.MouseEvent<SVGSVGElement>) => {
@@ -141,21 +164,27 @@ export function AppSidebar({
               hash={
                 (data as { me?: { id: string } })?.me?.id ??
                 user?.id ??
-                email
+                username
               }
               size={40}
               className="rounded-lg"
             />
             <div className="min-w-0 flex-1">
               <p className="mt-1 truncate text-xs text-muted-foreground">
-                {email}
+                {username}
               </p>
-              <p className="text-xl font-medium">
-                {balance >= 1_000
-                  ? `${(balance / 1_000).toFixed(1)}K`
-                  : balance.toFixed(2)}{" "}
-                ZEC
-              </p>
+              {owner ? (
+                <p className="truncate text-sm font-medium">
+                  for @{owner.username}
+                </p>
+              ) : (
+                <p className="text-xl font-medium">
+                  {balance >= 1_000
+                    ? `${(balance / 1_000).toFixed(1)}K`
+                    : balance.toFixed(2)}{" "}
+                  ZEC
+                </p>
+              )}
             </div>
           </div>
           {/* Wallet sync status */}
@@ -170,7 +199,7 @@ export function AppSidebar({
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <span className="inline-block size-1.5 animate-pulse rounded-full bg-amber-400" />
-                      Syncing wallet...
+                      <span className="text-shimmer">Syncing wallet...</span>
                     </span>
                     {syncProgress !== null && <span>{syncProgress}%</span>}
                   </div>
@@ -191,12 +220,26 @@ export function AppSidebar({
             </>
           )}
         </div>
+        {!owner && (
+          <>
+            <Button
+              className="w-full"
+              onClick={onTopUp ?? (() => setTopUpOpen(true))}
+            >
+              <Plus />
+              Top Up
+            </Button>
+            {!onTopUp && (
+              <TopUpModal open={topUpOpen} onOpenChange={setTopUpOpen} />
+            )}
+          </>
+        )}
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => (
+              {items.map((item) => (
                 <SidebarMenuItem key={item.path}>
                   <SidebarMenuButton
                     size="lg"

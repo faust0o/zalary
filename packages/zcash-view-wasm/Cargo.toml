@@ -11,17 +11,27 @@ default = ["orchard"]
 orchard = []
 
 [dependencies]
-# All zcash crates from the same git source to avoid version conflicts.
-# zcash_client_memory is not on crates.io, so we pull everything from git.
-zcash_client_backend = { git = "https://github.com/zcash/librustzcash", rev = "9e1b175e0c2f25efd32e243f1d19e41f1e55011d", default-features = false, features = [
+# Zcash crates from crates.io, at the first releases that know NU6.3 "Ironwood"
+# (activated on mainnet at height 3,428,143). The version strings are minimums
+# (caret requirements): orchard < 0.14 is yanked for GHSA-ww9q-8r59-xv46, and
+# anything older than these releases cannot see Ironwood notes or spends.
+# The `orchard` feature of zcash_client_backend also gates all Ironwood support
+# (Ironwood notes are Orchard-shaped and decrypted with the Orchard IVK).
+zcash_client_backend = { version = "0.24.0", default-features = false, features = [
     "sync",
     "orchard",
 ] }
-zcash_client_memory = { git = "https://github.com/zcash/librustzcash", rev = "9e1b175e0c2f25efd32e243f1d19e41f1e55011d", default-features = false, features = ["orchard"] }
-zcash_keys = { git = "https://github.com/zcash/librustzcash", rev = "9e1b175e0c2f25efd32e243f1d19e41f1e55011d", default-features = false, features = ["orchard"] }
-zcash_primitives = { git = "https://github.com/zcash/librustzcash", rev = "9e1b175e0c2f25efd32e243f1d19e41f1e55011d", default-features = false }
-zcash_protocol = { git = "https://github.com/zcash/librustzcash", rev = "9e1b175e0c2f25efd32e243f1d19e41f1e55011d" }
-zcash_address = { git = "https://github.com/zcash/librustzcash", rev = "9e1b175e0c2f25efd32e243f1d19e41f1e55011d" }
+zcash_keys = { version = "0.16.1", default-features = false, features = ["orchard"] }
+zcash_primitives = { version = "0.30.1", default-features = false }
+zcash_protocol = { version = "0.10.6", default-features = false }
+zcash_address = { version = "0.13.0", default-features = false }
+zip32 = { version = "0.2", default-features = false }
+
+# zcash_client_memory left librustzcash and has no Ironwood-capable release yet.
+# This pins the unmerged Ironwood parity PR (zcash/zcash_client_memory#17).
+# default-features = false drops `multicore` (rayon proving/subtree building),
+# matching the previous build.
+zcash_client_memory = { git = "https://github.com/zcashme/zcash_client_memory", rev = "37256ae6c775d2a5ab36da2e52b7ea568c966d52", default-features = false, features = ["orchard"] }
 
 # WASM + JS interop
 wasm-bindgen = "0.2"
@@ -31,13 +41,10 @@ web-sys = { version = "0.3", features = ["console"] }
 serde = { version = "1", features = ["derive"] }
 serde-wasm-bindgen = "0.6"
 
-# gRPC-web transport for lightwalletd in browser
+# gRPC-web transport for lightwalletd in browser (tonic 0.14, as used by
+# zcash_client_backend 0.24's generated CompactTxStreamerClient)
 tonic-web-wasm-client = "0.9"
-tonic = { version = "0.12", default-features = false, features = ["codegen", "prost"] }
 prost = "0.14"
-
-# Serialization for IndexedDB persistence
-bincode = "1"
 
 # Hex encoding for txids
 hex = "0.4"
@@ -52,22 +59,16 @@ async-trait = "0.1"
 wasm-bindgen-rayon = "1.2"
 
 # Sapling crypto (for Node type in subtree roots)
-sapling-crypto = { version = "0.6", default-features = false }
+sapling-crypto = { version = "0.7.0", default-features = false }
 
-# Orchard (for MerkleHashOrchard in subtree roots)
-orchard = { version = "0.12", default-features = false }
+# Orchard (for MerkleHashOrchard in Orchard and Ironwood subtree roots)
+orchard = { version = "0.15.5", default-features = false }
 
 # Logging and error handling
 console_error_panic_hook = "0.1"
 
 # WASM compatibility
 getrandom = { version = "0.2", features = ["js"] }
-
-# Patch halo2_proofs to fix compilation on current stable Rust
-# (crates.io v0.3.2 has broken multicore.rs for non-rayon/WASM targets)
-[patch.crates-io]
-halo2_proofs = { git = "https://github.com/zcash/halo2", rev = "32a8758" }
-halo2_gadgets = { git = "https://github.com/zcash/halo2", rev = "32a8758" }
 
 [profile.release]
 opt-level = 3

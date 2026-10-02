@@ -1,20 +1,32 @@
 import { PrismaClient } from "@prisma/client"
+import { hashPassword } from "../src/auth/password.js"
 
 const prisma = new PrismaClient()
 
-const email = process.argv[2]
+const username = process.argv[2]?.trim().toLowerCase()
+const password = process.argv[3] ?? "dev-password"
 
-if (!email) {
-  console.error("Usage: npx tsx prisma/seed.ts <email>")
-  console.error("Example: npx tsx prisma/seed.ts alice@example.com")
+if (!username || !/^[a-z0-9_]{3,32}$/.test(username)) {
+  console.error("Usage: npx tsx prisma/seed.ts <username> [password]")
+  console.error("Example: npx tsx prisma/seed.ts alice dev-password")
+  console.error(
+    "Username must be 3–32 characters: letters, numbers, and underscores."
+  )
+  process.exit(1)
+}
+
+if (password.length < 8) {
+  console.error("Password must be at least 8 characters.")
   process.exit(1)
 }
 
 async function main() {
-  console.log(`Seeding data for user: ${email}`)
+  console.log(`Seeding data for user: ${username}`)
+
+  const passwordHash = await hashPassword(password)
 
   // Clean existing data for this user to avoid duplicates
-  const existingUser = await prisma.user.findUnique({ where: { email } })
+  const existingUser = await prisma.user.findUnique({ where: { username } })
   if (existingUser) {
     await prisma.payment.deleteMany({
       where: { payroll: { userId: existingUser.id } },
@@ -30,27 +42,92 @@ async function main() {
     console.log("Cleaned existing data")
   }
 
-  const user = existingUser ?? await prisma.user.create({
-    data: {
-      email,
-      tribeUserId: `seed-${email}`,
-      zcashViewingKey: null,
-    },
-  })
+  const user = existingUser
+    ? await prisma.user.update({
+        where: { id: existingUser.id },
+        data: { passwordHash },
+      })
+    : await prisma.user.create({
+        data: {
+          username,
+          passwordHash,
+          zcashViewingKey: null,
+        },
+      })
   console.log(`User: ${user.id}`)
 
   // Employees — diverse backgrounds, roles, and salary ranges
   const employeesData = [
-    { name: "Alice Chen", title: "Lead Blockchain Engineer", walletAddress: "t1VpYgkRwXJBfLRkNRFaxKhcTEbzyCQxsag", salaryAmount: 8500, salaryCurrency: "USD" as const },
-    { name: "Marcus Johnson", title: "Protocol Architect", walletAddress: "t1LQ9qByNHBPo5JVT8c3T1jsFgc7GFkWB6P", salaryAmount: 9200, salaryCurrency: "USD" as const },
-    { name: "Priya Sharma", title: "Security Auditor", walletAddress: "t1KzCJSWTEjqjhR5GYStdUvrdkzRVnXY8aS", salaryAmount: 7800, salaryCurrency: "USD" as const },
-    { name: "Tomás Rivera", title: "UX Strategist", walletAddress: "t1UYsZVJkLPeMjxEtACvSxfWuNmddpWaqRM", salaryAmount: 6500, salaryCurrency: "USD" as const },
-    { name: "Yuki Tanaka", title: "DevOps Engineer", walletAddress: "t1N1GRWVjqZBTiDsa8RE7hQGSGPXxJYrZVb", salaryAmount: 7200, salaryCurrency: "USD" as const },
-    { name: "Amina Okafor", title: "Smart Contract Developer", walletAddress: "t1PHBBpXvYGfnJEa7ikFcb8M9KmKJYGqaaB", salaryAmount: 8000, salaryCurrency: "USD" as const },
-    { name: "Lena Kovač", title: "Community Manager", walletAddress: "t1RmXqE4PsYL7CkS9hNjVBGhRyoZU1uGfaR", salaryAmount: 150, salaryCurrency: "ZEC" as const },
-    { name: "David Osei", title: "Technical Writer", walletAddress: "t1SdKjL2mNpQr8vWxYz3tFgH5jB7nC9dEeA", salaryAmount: 5200, salaryCurrency: "USD" as const },
-    { name: "Sofia Petrov", title: "QA Lead", walletAddress: "t1TnMpR4sKjL6wXyZ2uFgH8jB3nC5dEeAvQ", salaryAmount: 6800, salaryCurrency: "USD" as const },
-    { name: "Kwame Mensah", title: "Cryptography Researcher", walletAddress: "t1UnNqS5tLkM7xYzA3vGhI9kC4oD6fFfBwR", salaryAmount: 200, salaryCurrency: "ZEC" as const },
+    {
+      name: "Alice Chen",
+      title: "Lead Blockchain Engineer",
+      walletAddress: "t1VpYgkRwXJBfLRkNRFaxKhcTEbzyCQxsag",
+      salaryAmount: 8500,
+      salaryCurrency: "USD" as const,
+    },
+    {
+      name: "Marcus Johnson",
+      title: "Protocol Architect",
+      walletAddress: "t1LQ9qByNHBPo5JVT8c3T1jsFgc7GFkWB6P",
+      salaryAmount: 9200,
+      salaryCurrency: "USD" as const,
+    },
+    {
+      name: "Priya Sharma",
+      title: "Security Auditor",
+      walletAddress: "t1KzCJSWTEjqjhR5GYStdUvrdkzRVnXY8aS",
+      salaryAmount: 7800,
+      salaryCurrency: "USD" as const,
+    },
+    {
+      name: "Tomás Rivera",
+      title: "UX Strategist",
+      walletAddress: "t1UYsZVJkLPeMjxEtACvSxfWuNmddpWaqRM",
+      salaryAmount: 6500,
+      salaryCurrency: "USD" as const,
+    },
+    {
+      name: "Yuki Tanaka",
+      title: "DevOps Engineer",
+      walletAddress: "t1N1GRWVjqZBTiDsa8RE7hQGSGPXxJYrZVb",
+      salaryAmount: 7200,
+      salaryCurrency: "USD" as const,
+    },
+    {
+      name: "Amina Okafor",
+      title: "Smart Contract Developer",
+      walletAddress: "t1PHBBpXvYGfnJEa7ikFcb8M9KmKJYGqaaB",
+      salaryAmount: 8000,
+      salaryCurrency: "USD" as const,
+    },
+    {
+      name: "Lena Kovač",
+      title: "Community Manager",
+      walletAddress: "t1RmXqE4PsYL7CkS9hNjVBGhRyoZU1uGfaR",
+      salaryAmount: 150,
+      salaryCurrency: "ZEC" as const,
+    },
+    {
+      name: "David Osei",
+      title: "Technical Writer",
+      walletAddress: "t1SdKjL2mNpQr8vWxYz3tFgH5jB7nC9dEeA",
+      salaryAmount: 5200,
+      salaryCurrency: "USD" as const,
+    },
+    {
+      name: "Sofia Petrov",
+      title: "QA Lead",
+      walletAddress: "t1TnMpR4sKjL6wXyZ2uFgH8jB3nC5dEeAvQ",
+      salaryAmount: 6800,
+      salaryCurrency: "USD" as const,
+    },
+    {
+      name: "Kwame Mensah",
+      title: "Cryptography Researcher",
+      walletAddress: "t1UnNqS5tLkM7xYzA3vGhI9kC4oD6fFfBwR",
+      salaryAmount: 200,
+      salaryCurrency: "ZEC" as const,
+    },
   ]
 
   const employees = []
@@ -125,7 +202,15 @@ async function main() {
     new Date("2026-02-15"),
   ]
 
-  const payrollCycle = [engineeringPayroll, operationsPayroll, engineeringPayroll, operationsPayroll, engineeringPayroll, operationsPayroll, engineeringPayroll]
+  const payrollCycle = [
+    engineeringPayroll,
+    operationsPayroll,
+    engineeringPayroll,
+    operationsPayroll,
+    engineeringPayroll,
+    operationsPayroll,
+    engineeringPayroll,
+  ]
 
   for (let i = 0; i < months.length; i++) {
     const payroll = payrollCycle[i]
@@ -145,12 +230,14 @@ async function main() {
           create: payrollEmployees.map((pe, j) => ({
             employeeId: pe.employeeId,
             payrollId: payroll.id,
-            amountUsd: pe.employee.salaryCurrency === "ZEC"
-              ? pe.employee.salaryAmount * zecPrices[i]
-              : pe.employee.salaryAmount,
-            amountZec: pe.employee.salaryCurrency === "ZEC"
-              ? pe.employee.salaryAmount
-              : pe.employee.salaryAmount / zecPrices[i],
+            amountUsd:
+              pe.employee.salaryCurrency === "ZEC"
+                ? pe.employee.salaryAmount * zecPrices[i]
+                : pe.employee.salaryAmount,
+            amountZec:
+              pe.employee.salaryCurrency === "ZEC"
+                ? pe.employee.salaryAmount
+                : pe.employee.salaryAmount / zecPrices[i],
             memo: `zalary:seed:run${i}:pay${j}`,
             status: "COMPLETED" as const,
             txHash: `tx_${pe.employeeId.substring(0, 8)}_${months[i].toISOString().substring(0, 7)}`,
@@ -159,7 +246,9 @@ async function main() {
         },
       },
     })
-    console.log(`Seeded run for ${payroll.name} - ${months[i].toISOString().substring(0, 7)}`)
+    console.log(
+      `Seeded run for ${payroll.name} - ${months[i].toISOString().substring(0, 7)}`
+    )
   }
 
   // One recent in-progress run with mixed statuses
@@ -178,15 +267,18 @@ async function main() {
         create: recentRunEmployees.map((pe, idx) => ({
           employeeId: pe.employeeId,
           payrollId: researchPayroll.id,
-          amountUsd: pe.employee.salaryCurrency === "ZEC"
-            ? pe.employee.salaryAmount * 33.0
-            : pe.employee.salaryAmount,
-          amountZec: pe.employee.salaryCurrency === "ZEC"
-            ? pe.employee.salaryAmount
-            : pe.employee.salaryAmount / 33.0,
+          amountUsd:
+            pe.employee.salaryCurrency === "ZEC"
+              ? pe.employee.salaryAmount * 33.0
+              : pe.employee.salaryAmount,
+          amountZec:
+            pe.employee.salaryCurrency === "ZEC"
+              ? pe.employee.salaryAmount
+              : pe.employee.salaryAmount / 33.0,
           memo: `zalary:seed:recent:pay${idx}`,
           status: idx === 0 ? ("COMPLETED" as const) : ("SKIPPED" as const),
-          txHash: idx === 0 ? `tx_recent_${pe.employeeId.substring(0, 8)}` : null,
+          txHash:
+            idx === 0 ? `tx_recent_${pe.employeeId.substring(0, 8)}` : null,
           createdAt: new Date("2026-03-10"),
         })),
       },
@@ -195,7 +287,7 @@ async function main() {
   console.log("Seeded 1 in-progress run for Research Grants")
 
   console.log("\nSeed complete!")
-  console.log(`Login with email: ${email}`)
+  console.log(`Login with username: ${username}`)
 }
 
 main()

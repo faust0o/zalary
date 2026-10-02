@@ -1,6 +1,6 @@
 import { allow } from "graphql-shield"
 
-import { isAuthenticated } from "../permissions.js"
+import { isAccountOwner, isAuthenticated } from "../permissions.js"
 
 export const authPermissions: {
   Query: Record<string, unknown>
@@ -10,7 +10,10 @@ export const authPermissions: {
     me: allow,
   },
   Mutation: {
-    registerUser: allow,
-    updateUser: isAuthenticated,
+    register: allow,
+    acceptDelegateInvite: allow,
+    login: allow,
+    changePassword: isAuthenticated,
+    updateUser: isAccountOwner,
   },
 }

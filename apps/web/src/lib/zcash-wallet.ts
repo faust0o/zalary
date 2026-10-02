@@ -6,7 +6,7 @@ const LIGHTWALLETD_URL =
 
 const IDB_KEY = "zcash-wallet-state"
 const WALLET_VERSION_KEY = "zcash-wallet-version"
-const WALLET_VERSION = 20
+const WALLET_VERSION = 21
 
 export interface BalanceInfo {
   spendable: number
@@ -140,6 +140,11 @@ export async function getBalance(): Promise<BalanceInfo> {
 export async function getSentTransactions(): Promise<SentTransaction[]> {
   if (!initialized) return []
   return (await call("getSentTransactions")) as SentTransaction[]
+}
+
+/** Derive the default shielded unified address of the UFVK. */
+export async function deriveUnifiedAddress(ufvk: string): Promise<string> {
+  return (await call("deriveAddress", { ufvk })) as string
 }
 
 export function isInitialized(): boolean {

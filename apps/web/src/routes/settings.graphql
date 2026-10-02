@@ -1,16 +1,34 @@
 query MeSettings {
   me {
     id
-    email
+    username
+    name
+    owner {
+      id
+      username
+    }
     zcashViewingKey
     walletBirthdayHeight
   }
 }
 
 mutation UpdateUser($zcashViewingKey: String, $walletBirthdayHeight: Int) {
-  updateUser(zcashViewingKey: $zcashViewingKey, walletBirthdayHeight: $walletBirthdayHeight) {
+  updateUser(
+    zcashViewingKey: $zcashViewingKey
+    walletBirthdayHeight: $walletBirthdayHeight
+  ) {
     id
     zcashViewingKey
     walletBirthdayHeight
+  }
+}
+
+mutation ChangePassword($currentPassword: String!, $newPassword: String!) {
+  changePassword(currentPassword: $currentPassword, newPassword: $newPassword) {
+    token
+    user {
+      id
+      username
+    }
   }
 }

@@ -1,0 +1,46 @@
+mutation Login($username: String!, $password: String!) {
+  login(username: $username, password: $password) {
+    token
+    user {
+      id
+      username
+    }
+  }
+}
+
+mutation Register($username: String!, $password: String!) {
+  register(username: $username, password: $password) {
+    token
+    user {
+      id
+      username
+    }
+  }
+}
+
+query Me {
+  me {
+    id
+    username
+  }
+}
+
+mutation AcceptDelegateInvite(
+  $token: String!
+  $name: String!
+  $username: String!
+  $password: String!
+) {
+  acceptDelegateInvite(
+    token: $token
+    name: $name
+    username: $username
+    password: $password
+  ) {
+    token
+    user {
+      id
+      username
+    }
+  }
+}

@@ -43,7 +43,8 @@ export const DEMO_EMPLOYEES: DemoEmployee[] = [
     id: "demo-emp-1",
     name: "Alice Chen",
     title: "Lead Engineer",
-    walletAddress: "zs1aq8k7cayrz6ynkj62qzlqr0tcxk4rg59jgk2ydtpqfnxz5ealqs3vev5m2qgx4ynk7h6q25r0n",
+    walletAddress:
+      "zs1aq8k7cayrz6ynkj62qzlqr0tcxk4rg59jgk2ydtpqfnxz5ealqs3vev5m2qgx4ynk7h6q25r0n",
     walletVerified: true,
     salaryAmount: 8500,
     salaryCurrency: "USD",
@@ -52,7 +53,8 @@ export const DEMO_EMPLOYEES: DemoEmployee[] = [
     id: "demo-emp-2",
     name: "Bob Martinez",
     title: "Product Designer",
-    walletAddress: "zs1rh8v5t4j7xwq3g9kz0yf6n2m5c8d1a4b7e0h3k6p9s2u5x8w1z4c7f0j3l6o9r2t5v8y1b4d7",
+    walletAddress:
+      "zs1rh8v5t4j7xwq3g9kz0yf6n2m5c8d1a4b7e0h3k6p9s2u5x8w1z4c7f0j3l6o9r2t5v8y1b4d7",
     walletVerified: true,
     salaryAmount: 7200,
     salaryCurrency: "USD",
@@ -61,7 +63,8 @@ export const DEMO_EMPLOYEES: DemoEmployee[] = [
     id: "demo-emp-3",
     name: "Carol Thompson",
     title: "Backend Developer",
-    walletAddress: "zs1kx9m2n5p8q1r4t7u0v3w6y9z2a5b8c1d4e7f0g3h6i9j2k5l8m1n4o7p0q3r6s9t2u5v8w1x4",
+    walletAddress:
+      "zs1kx9m2n5p8q1r4t7u0v3w6y9z2a5b8c1d4e7f0g3h6i9j2k5l8m1n4o7p0q3r6s9t2u5v8w1x4",
     walletVerified: true,
     salaryAmount: 7800,
     salaryCurrency: "USD",
@@ -70,7 +73,8 @@ export const DEMO_EMPLOYEES: DemoEmployee[] = [
     id: "demo-emp-4",
     name: "David Kim",
     title: "DevOps Engineer",
-    walletAddress: "zs1f7g0h3i6j9k2l5m8n1o4p7q0r3s6t9u2v5w8x1y4z7a0b3c6d9e2f5g8h1i4j7k0l3m6n9o2p5",
+    walletAddress:
+      "zs1f7g0h3i6j9k2l5m8n1o4p7q0r3s6t9u2v5w8x1y4z7a0b3c6d9e2f5g8h1i4j7k0l3m6n9o2p5",
     walletVerified: false,
     salaryAmount: 150,
     salaryCurrency: "ZEC",
@@ -79,7 +83,8 @@ export const DEMO_EMPLOYEES: DemoEmployee[] = [
     id: "demo-emp-5",
     name: "Eva Novak",
     title: "Marketing Lead",
-    walletAddress: "zs1q3r6s9t2u5v8w1x4y7z0a3b6c9d2e5f8g1h4i7j0k3l6m9n2o5p8q1r4s7t0u3v6w9x2y5z8a1",
+    walletAddress:
+      "zs1q3r6s9t2u5v8w1x4y7z0a3b6c9d2e5f8g1h4i7j0k3l6m9n2o5p8q1r4s7t0u3v6w9x2y5z8a1",
     walletVerified: true,
     salaryAmount: 6500,
     salaryCurrency: "USD",
@@ -104,13 +109,37 @@ export const DEMO_PAYROLLS: DemoPayroll[] = [
     name: "Core Team",
     schedule: "EVERY_MONTH",
     employees: [
-      { employeeId: "demo-emp-1", employee: { id: "demo-emp-1", name: "Alice Chen", salaryAmount: 8500 } },
-      { employeeId: "demo-emp-2", employee: { id: "demo-emp-2", name: "Bob Martinez", salaryAmount: 7200 } },
-      { employeeId: "demo-emp-3", employee: { id: "demo-emp-3", name: "Carol Thompson", salaryAmount: 7800 } },
-      { employeeId: "demo-emp-5", employee: { id: "demo-emp-5", name: "Eva Novak", salaryAmount: 6500 } },
+      {
+        employeeId: "demo-emp-1",
+        employee: { id: "demo-emp-1", name: "Alice Chen", salaryAmount: 8500 },
+      },
+      {
+        employeeId: "demo-emp-2",
+        employee: {
+          id: "demo-emp-2",
+          name: "Bob Martinez",
+          salaryAmount: 7200,
+        },
+      },
+      {
+        employeeId: "demo-emp-3",
+        employee: {
+          id: "demo-emp-3",
+          name: "Carol Thompson",
+          salaryAmount: 7800,
+        },
+      },
+      {
+        employeeId: "demo-emp-5",
+        employee: { id: "demo-emp-5", name: "Eva Novak", salaryAmount: 6500 },
+      },
     ],
     runs: [
-      { id: "run-1", status: "COMPLETED", createdAt: twentyDaysAgo.toISOString() },
+      {
+        id: "run-1",
+        status: "COMPLETED",
+        createdAt: twentyDaysAgo.toISOString(),
+      },
     ],
   },
   {
@@ -118,10 +147,17 @@ export const DEMO_PAYROLLS: DemoPayroll[] = [
     name: "Contractors",
     schedule: "EVERY_TWO_WEEKS",
     employees: [
-      { employeeId: "demo-emp-4", employee: { id: "demo-emp-4", name: "David Kim", salaryAmount: 4000 } },
+      {
+        employeeId: "demo-emp-4",
+        employee: { id: "demo-emp-4", name: "David Kim", salaryAmount: 4000 },
+      },
     ],
     runs: [
-      { id: "run-2", status: "COMPLETED", createdAt: fiveDaysAgo.toISOString() },
+      {
+        id: "run-2",
+        status: "COMPLETED",
+        createdAt: fiveDaysAgo.toISOString(),
+      },
     ],
   },
 ]
@@ -131,7 +167,11 @@ function generateChartData() {
   let total = 0
   const amounts = [3.2, 5.8, 4.1, 7.3, 6.5, 8.9, 5.2, 9.1, 7.8, 6.4, 8.2, 10.5]
   return amounts.map((amount, i) => {
-    const d = new Date(now.getFullYear(), now.getMonth() - (amounts.length - 1 - i), 1)
+    const d = new Date(
+      now.getFullYear(),
+      now.getMonth() - (amounts.length - 1 - i),
+      1
+    )
     const month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
     total += amount
     return { month, monthly: amount, accumulated: +total.toFixed(4) }
@@ -272,4 +312,40 @@ export const DEMO_PAYMENTS: DemoPayment[] = [
 ]
 
 export const DEMO_WALLET_BALANCE = 42.85
-export const DEMO_EMAIL = "demo@zalary.app"
+export const DEMO_USERNAME = "demo"
+
+export interface DemoDelegate {
+  id: string
+  name: string
+  username: string
+  createdAt: string
+}
+
+export interface DemoDelegateInvite {
+  id: string
+  token: string
+  expiresAt: string
+}
+
+export const DEMO_DELEGATES: DemoDelegate[] = [
+  {
+    id: "demo-delegate-1",
+    name: "Maya Patel",
+    username: "maya_ops",
+    createdAt: twentyDaysAgo.toISOString(),
+  },
+  {
+    id: "demo-delegate-2",
+    name: "Jordan Reyes",
+    username: "jordan_books",
+    createdAt: fiveDaysAgo.toISOString(),
+  },
+]
+
+export const DEMO_DELEGATE_INVITES: DemoDelegateInvite[] = [
+  {
+    id: "demo-invite-1",
+    token: "cmdemo4f8k0001x7l2p9q3r5t.Jq8vN3xR0bYzW6kT2mHs5cLf9dPgA1uE7iOy4nVtQ0",
+    expiresAt: threeDaysFromNow.toISOString(),
+  },
+]

@@ -18,7 +18,7 @@ export function PayrollsPage() {
   const [disbursePayrollId, setDisbursePayrollId] = useState<string | null>(null)
 
   const payrolls = data?.payrolls ?? []
-  const zecBalance = walletBalance?.total ?? 0
+  const zecBalance = walletBalance?.total ?? null
 
   return (
     <>

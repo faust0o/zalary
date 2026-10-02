@@ -3,7 +3,11 @@
 /// concurrent access to the WASM wallet (which causes aliasing errors).
 
 // Import the WASM module directly (--target web output, not through vite-plugin-wasm)
-import initWasm, { ZcashViewWallet, initThreadPool } from "zcash-view-wasm/zcash_view_wasm.js"
+import initWasm, {
+  ZcashViewWallet,
+  deriveUnifiedAddress,
+  initThreadPool,
+} from "zcash-view-wasm/zcash_view_wasm.js"
 // Import the WASM binary URL so Vite resolves it correctly
 import wasmUrl from "zcash-view-wasm/zcash_view_wasm_bg.wasm?url"
 
@@ -17,19 +21,25 @@ type Request =
   | { id: number; type: "getSentTransactions" }
   | { id: number; type: "toBytes" }
   | { id: number; type: "getChainTip" }
+  | { id: number; type: "deriveAddress"; ufvk: string }
+
+type QueuedRequest = Exclude<Request, { type: "deriveAddress" }>
 
 // Sequential message queue
-const queue: Request[] = []
+const queue: QueuedRequest[] = []
 let processing = false
-let wasmReady = false
+let wasmReady: Promise<void> | null = null
 
-async function ensureWasm() {
-  if (!wasmReady) {
+function ensureWasm() {
+  wasmReady ??= (async () => {
     await initWasm({ module_or_path: wasmUrl })
     await initThreadPool(navigator.hardwareConcurrency || 4)
-    wasmReady = true
     console.log("[zcash-worker] WASM + thread pool initialized")
-  }
+  })().catch((err) => {
+    wasmReady = null
+    throw err
+  })
+  return wasmReady
 }
 
 async function processQueue() {
@@ -48,11 +58,25 @@ async function processQueue() {
 }
 
 self.onmessage = (e: MessageEvent<Request>) => {
+  // Address derivation doesn't touch wallet state, so it skips the queue
+  // instead of waiting behind a potentially long sync.
+  if (e.data.type === "deriveAddress") {
+    const { id, ufvk } = e.data
+    ensureWasm()
+      .then(() => self.postMessage({ id, result: deriveUnifiedAddress(ufvk) }))
+      .catch((err) =>
+        self.postMessage({
+          id,
+          error: err instanceof Error ? err.message : String(err),
+        })
+      )
+    return
+  }
   queue.push(e.data)
   processQueue()
 }
 
-async function handleMessage(msg: Request) {
+async function handleMessage(msg: QueuedRequest) {
   await ensureWasm()
 
   switch (msg.type) {

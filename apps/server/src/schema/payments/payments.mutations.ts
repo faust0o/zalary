@@ -10,10 +10,10 @@ export const startPayrollRun = mutationField("startPayrollRun", {
   type: nonNull("PayrollRun"),
   args: { payrollId: nonNull(idArg()) },
   async resolve(_parent, args, ctx) {
-    if (!ctx.userId) throw new Error("Not authenticated")
+    if (!ctx.accountId) throw new Error("Not authenticated")
 
     const payroll = await ctx.prisma.payroll.findFirst({
-      where: { id: args.payrollId, userId: ctx.userId },
+      where: { id: args.payrollId, userId: ctx.accountId },
       include: {
         employees: { include: { employee: true } },
       },
@@ -71,12 +71,12 @@ export const updatePaymentStatus = mutationField("updatePaymentStatus", {
     txHash: stringArg(),
   },
   async resolve(_parent, args, ctx) {
-    if (!ctx.userId) throw new Error("Not authenticated")
+    if (!ctx.accountId) throw new Error("Not authenticated")
 
     const payment = await ctx.prisma.payment.findFirst({
       where: {
         id: args.paymentId,
-        payroll: { userId: ctx.userId },
+        payroll: { userId: ctx.accountId },
       },
     })
     if (!payment) throw new Error("Payment not found")
@@ -95,12 +95,12 @@ export const completePayrollRun = mutationField("completePayrollRun", {
   type: nonNull("PayrollRun"),
   args: { runId: nonNull(idArg()) },
   async resolve(_parent, args, ctx) {
-    if (!ctx.userId) throw new Error("Not authenticated")
+    if (!ctx.accountId) throw new Error("Not authenticated")
 
     const run = await ctx.prisma.payrollRun.findFirst({
       where: {
         id: args.runId,
-        payroll: { userId: ctx.userId },
+        payroll: { userId: ctx.accountId },
       },
       include: { payments: true },
     })

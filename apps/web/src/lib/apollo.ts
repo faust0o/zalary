@@ -1,18 +1,17 @@
 import { ApolloClient, InMemoryCache, createHttpLink } from "@apollo/client"
 import { setContext } from "@apollo/client/link/context"
-import { tribe } from "./tribe"
+import { getSessionToken } from "./session"
 
 const httpLink = createHttpLink({
-  uri: import.meta.env.VITE_GRAPHQL_URL || "http://localhost:4000/graphql",
+  uri: import.meta.env.VITE_GRAPHQL_URL || "/graphql",
 })
 
 const authLink = setContext((_, { headers }) => {
-  // Send the userToken (JWT signed with TRIBE_KEY) for backend verification
-  const userToken = tribe.getUserToken()
+  const token = getSessionToken()
   return {
     headers: {
       ...headers,
-      ...(userToken ? { authorization: `Bearer ${userToken}` } : {}),
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
     },
   }
 })

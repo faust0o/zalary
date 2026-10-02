@@ -8,15 +8,36 @@ datasource db {
 }
 
 model User {
-  id              String    @id @default(cuid())
-  email           String    @unique
-  tribeUserId     String    @unique
+  id                   String           @id @default(cuid())
+  username             String           @unique
+  name                 String?
+  passwordHash         String
+  tokenVersion         Int              @default(0)
   zcashViewingKey      String?
   walletBirthdayHeight Int?
+  /// Set for delegates: the account whose payroll data this user manages.
+  ownerId              String?
+  owner                User?            @relation("Delegates", fields: [ownerId], references: [id], onDelete: Cascade)
+  delegates            User[]           @relation("Delegates")
+  delegateInvites      DelegateInvite[]
   employees            Employee[]
-  payrolls        Payroll[]
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  payrolls             Payroll[]
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  @@index([ownerId])
+}
+
+/// Invite links carry the id plus an HMAC of it (see src/auth/invite.ts), so
+/// nothing secret is stored here.
+model DelegateInvite {
+  id        String   @id @default(cuid())
+  ownerId   String
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([ownerId])
 }
 
 enum SalaryCurrency {
@@ -25,19 +46,19 @@ enum SalaryCurrency {
 }
 
 model Employee {
-  id              String            @id @default(cuid())
-  name            String
-  title           String?
-  walletAddress   String
-  walletVerified  Boolean           @default(false)
-  salaryAmount    Float
-  salaryCurrency  SalaryCurrency    @default(USD)
-  userId          String
-  user            User              @relation(fields: [userId], references: [id])
-  payrolls        PayrollEmployee[]
-  payments        Payment[]
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  id             String            @id @default(cuid())
+  name           String
+  title          String?
+  walletAddress  String
+  walletVerified Boolean           @default(false)
+  salaryAmount   Float
+  salaryCurrency SalaryCurrency    @default(USD)
+  userId         String
+  user           User              @relation(fields: [userId], references: [id])
+  payrolls       PayrollEmployee[]
+  payments       Payment[]
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
 }
 
 enum Schedule {

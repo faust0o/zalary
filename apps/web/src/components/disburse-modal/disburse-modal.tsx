@@ -73,6 +73,8 @@ export function DisburseModal({
   const [autoStarted, setAutoStarted] = useState(false)
   const [detectedPayments, setDetectedPayments] = useState<Set<string>>(new Set())
   const [detecting, setDetecting] = useState(false)
+  // Payments are created when their run starts; earlier txs can't pay them
+  const [runsStartedAt, setRunsStartedAt] = useState<string | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const payrolls = data?.payrolls ?? []
@@ -142,6 +144,7 @@ export function DisburseModal({
         }
       }
       setRuns(newRuns)
+      setRunsStartedAt(new Date().toISOString())
       setAllPayments(newRuns.flatMap((r) => r.payments))
       setCurrentIndex(0)
       setStep("payout")
@@ -152,7 +155,7 @@ export function DisburseModal({
 
   // Poll for matching transactions during payout step
   const checkForMatches = useCallback(async () => {
-    if (!walletReady) return
+    if (!walletReady || !runsStartedAt) return
 
     setDetecting(true)
     try {
@@ -163,7 +166,7 @@ export function DisburseModal({
         .map((p) => ({
           id: p.id,
           amountZec: p.amountZec,
-          createdAt: new Date().toISOString(), // payments just created this session
+          createdAt: runsStartedAt,
         }))
 
       if (!pending.length) return
@@ -203,7 +206,7 @@ export function DisburseModal({
     } finally {
       setDetecting(false)
     }
-  }, [walletReady, sync, getSentTxs, allPayments, detectedPayments, currentIndex, runs, updatePaymentStatus, completePayrollRun])
+  }, [walletReady, runsStartedAt, sync, getSentTxs, allPayments, detectedPayments, currentIndex, runs, updatePaymentStatus, completePayrollRun])
 
   // Start/stop polling when entering/leaving payout step
   useEffect(() => {
@@ -389,7 +392,11 @@ export function DisburseModal({
                   ) : walletReady ? (
                     <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                       <span className={`inline-block size-2 rounded-full bg-amber-400 ${detecting ? "animate-pulse" : "animate-[pulse_3s_ease-in-out_infinite]"}`} />
-                      {detecting ? "Syncing wallet..." : "Waiting for transaction..."}
+                      {detecting ? (
+                        <span className="text-shimmer">Syncing wallet...</span>
+                      ) : (
+                        "Waiting for transaction..."
+                      )}
                     </div>
                   ) : null}
                 </div>

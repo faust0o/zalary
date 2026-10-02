@@ -3,5 +3,8 @@ query MeLayout {
     id
     zcashViewingKey
     walletBirthdayHeight
+    owner {
+      id
+    }
   }
 }

@@ -1,11 +1,8 @@
 import { useQuery } from "@apollo/client/react"
-import {
-  SidebarInset,
-  SidebarProvider,
-} from "@workspace/ui/components/sidebar"
+import { SidebarInset, SidebarProvider } from "@workspace/ui/components/sidebar"
 import { TooltipProvider } from "@workspace/ui/components/tooltip"
 import { useState } from "react"
-import { Navigate, Outlet, useSearchParams } from "react-router-dom"
+import { Navigate, Outlet } from "react-router-dom"
 import { AppSidebar } from "../components/app-sidebar"
 import { CoiGuard } from "../components/coi-guard"
 import { MobileGuard } from "../components/mobile-guard"
@@ -17,26 +14,32 @@ import { ZcashWalletProvider } from "../hooks/use-zcash-wallet"
 
 export function Layout() {
   const { user, loading } = useAuth()
-  const { data: meData, loading: meLoading, refetch: refetchMe } = useQuery(MeLayoutDocument, { skip: !user })
-  const [searchParams, setSearchParams] = useSearchParams()
-  const fromRegistration = searchParams.get("onboarding") === "1"
+  const {
+    data: meData,
+    loading: meLoading,
+    refetch: refetchMe,
+  } = useQuery(MeLayoutDocument, { skip: !user })
   const [onboardingDismissed, setOnboardingDismissed] = useState(false)
 
   const meLoaded = !meLoading && meData?.me != null
-  const missingWalletConfig = meLoaded && (!meData.me?.zcashViewingKey || !meData.me?.walletBirthdayHeight)
+  const missingWalletConfig =
+    meLoaded &&
+    (!meData.me?.zcashViewingKey || !meData.me?.walletBirthdayHeight)
 
-  // Strip onboarding param if wallet is already configured
-  if (fromRegistration && meLoaded && !missingWalletConfig) {
-    searchParams.delete("onboarding")
-    setSearchParams(searchParams, { replace: true })
-  }
-  const needsOnboarding = missingWalletConfig
+  // Only the owner can set the wallet up; delegates use the owner's.
+  const needsOnboarding = missingWalletConfig && !meData.me?.owner
   const onboardingOpen = needsOnboarding && !onboardingDismissed
 
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <div className="text-muted-foreground text-sm"><img src="/zalary-logo.svg" alt="Zalary" className="animate-pulse size-30" /></div>
+        <div className="text-sm text-muted-foreground">
+          <img
+            src="/zalary-logo.svg"
+            alt="Zalary"
+            className="size-30 animate-pulse"
+          />
+        </div>
       </div>
     )
   }
@@ -64,8 +67,12 @@ export function Layout() {
               </SidebarInset>
               <OnboardingModal
                 open={onboardingOpen}
-                onOpenChange={(open) => { if (!open) { setOnboardingDismissed(true); refetchMe() } }}
-                skipPasskey={fromRegistration}
+                onOpenChange={(open) => {
+                  if (!open) {
+                    setOnboardingDismissed(true)
+                    refetchMe()
+                  }
+                }}
               />
               <Walkthrough />
             </SidebarProvider>

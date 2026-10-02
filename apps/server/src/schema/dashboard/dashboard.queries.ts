@@ -25,12 +25,12 @@ function getNextDueDate(
 export const dashboardStats = queryField("dashboardStats", {
   type: nonNull("DashboardStats"),
   async resolve(_parent, _args, ctx) {
-    if (!ctx.userId) throw new Error("Not authenticated")
+    if (!ctx.accountId) throw new Error("Not authenticated")
 
     // ZEC spent by month
     const completedPayments = await ctx.prisma.payment.findMany({
       where: {
-        payroll: { userId: ctx.userId },
+        payroll: { userId: ctx.accountId },
         status: "COMPLETED",
       },
       select: { amountZec: true, createdAt: true },
@@ -48,7 +48,7 @@ export const dashboardStats = queryField("dashboardStats", {
 
     // Next payroll due
     const payrolls = await ctx.prisma.payroll.findMany({
-      where: { userId: ctx.userId },
+      where: { userId: ctx.accountId },
       include: {
         employees: true,
         runs: { orderBy: { createdAt: "desc" }, take: 1 },
@@ -94,7 +94,7 @@ export const dashboardStats = queryField("dashboardStats", {
 
     // Recent runs
     const recentRuns = await ctx.prisma.payrollRun.findMany({
-      where: { payroll: { userId: ctx.userId } },
+      where: { payroll: { userId: ctx.accountId } },
       orderBy: { createdAt: "desc" },
       take: 3,
     })
@@ -106,9 +106,9 @@ export const dashboardStats = queryField("dashboardStats", {
 export const zecBalance = queryField("zecBalance", {
   type: "ZecBalance",
   async resolve(_parent, _args, ctx) {
-    if (!ctx.userId) throw new Error("Not authenticated")
+    if (!ctx.accountId) throw new Error("Not authenticated")
     const user = await ctx.prisma.user.findUniqueOrThrow({
-      where: { id: ctx.userId },
+      where: { id: ctx.accountId },
     })
     if (!user.zcashViewingKey) {
       return { available: 0 }

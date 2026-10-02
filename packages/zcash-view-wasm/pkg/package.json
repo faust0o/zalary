@@ -5,11 +5,19 @@
   "files": [
     "zcash_view_wasm_bg.wasm",
     "zcash_view_wasm.js",
-    "zcash_view_wasm.d.ts"
+    "zcash_view_wasm.d.ts",
+    "snippets"
   ],
   "main": "zcash_view_wasm.js",
   "types": "zcash_view_wasm.d.ts",
   "sideEffects": [
     "./snippets/*"
-  ]
+  ],
+  "description": "Zcash view-only light wallet for the browser, compiled to WebAssembly.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AustinZhu/zalary.git",
+    "directory": "packages/zcash-view-wasm"
+  }
 }

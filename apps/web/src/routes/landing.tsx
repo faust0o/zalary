@@ -8,7 +8,7 @@ import {
   Calendar,
   ChevronDown,
   EyeOff,
-  Fingerprint,
+  KeyRound,
   Monitor,
   Moon,
   Pencil,
@@ -118,7 +118,7 @@ export function LandingPage() {
       <section className="relative flex min-h-screen items-center justify-center overflow-hidden px-6 pt-24 pb-20 md:px-12">
         {/* Doodle background */}
         <div
-          className="pointer-events-none absolute inset-0 brightness-300 opacity-5 dark:opacity-20"
+          className="pointer-events-none absolute inset-0 opacity-5 brightness-300 dark:opacity-20"
           style={{
             backgroundImage: "url('/zalary-doodle.svg')",
             backgroundPosition: "center",
@@ -418,19 +418,15 @@ export function LandingPage() {
             {[
               {
                 value: "pseudonymous",
-                Icon: Fingerprint,
-                title: "Pseudonymous by default",
-                body: "Sign in through Tribe, a pseudonymous authentication layer. No email address, no tracking cookies, no personal identifiers stored on our side. Your account is a keypair, not a profile.",
-                link: {
-                  href: "https://docs.utopian.build/auth#privacy-model",
-                  label: "Learn about Tribe",
-                },
+                Icon: KeyRound,
+                title: "A username, not a profile",
+                body: "Sign in with a username and password you choose. Zalary never asks for an email address, and sign-in does not go through a third-party identity provider.",
               },
               {
                 value: "non-custodial",
                 Icon: EyeOff,
                 title: "Non-custodial data model",
-                body: "Zalary stores only the viewing key you provide. There's no personally identifiable information on our servers, which means the key itself can never be traced back to a real-world identity.",
+                body: "Zalary stores your username, a password hash, and the viewing key you provide. The viewing key is read-only and cannot spend funds.",
               },
               {
                 value: "shielded",
@@ -458,17 +454,6 @@ export function LandingPage() {
                     <p className="max-w-lg text-sm leading-relaxed text-muted-foreground md:text-base">
                       {layer.body}
                     </p>
-                    {"link" in layer && layer.link && (
-                      <a
-                        href={layer.link.href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary transition-colors hover:text-primary/80"
-                      >
-                        {layer.link.label}
-                        <ArrowRight className="size-3.5" />
-                      </a>
-                    )}
                   </div>
                 </Accordion.Content>
               </Accordion.Item>

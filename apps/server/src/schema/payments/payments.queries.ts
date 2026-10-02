@@ -7,10 +7,10 @@ export const payments = queryField("payments", {
     employeeId: idArg(),
   },
   resolve(_parent, args, ctx) {
-    if (!ctx.userId) throw new Error("Not authenticated")
+    if (!ctx.accountId) throw new Error("Not authenticated")
     return ctx.prisma.payment.findMany({
       where: {
-        payroll: { userId: ctx.userId },
+        payroll: { userId: ctx.accountId },
         ...(args.payrollId ? { payrollId: args.payrollId } : {}),
         ...(args.employeeId ? { employeeId: args.employeeId } : {}),
       },
@@ -23,11 +23,11 @@ export const payrollRun = queryField("payrollRun", {
   type: "PayrollRun",
   args: { id: nonNull(idArg()) },
   resolve(_parent, args, ctx) {
-    if (!ctx.userId) throw new Error("Not authenticated")
+    if (!ctx.accountId) throw new Error("Not authenticated")
     return ctx.prisma.payrollRun.findFirst({
       where: {
         id: args.id,
-        payroll: { userId: ctx.userId },
+        payroll: { userId: ctx.accountId },
       },
     })
   },

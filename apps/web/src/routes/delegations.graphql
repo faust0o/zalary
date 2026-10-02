@@ -1,0 +1,33 @@
+query Delegations {
+  delegates {
+    id
+    name
+    username
+    createdAt
+  }
+  delegateInvites {
+    id
+    token
+    expiresAt
+  }
+}
+
+mutation CreateDelegateInvite {
+  createDelegateInvite {
+    id
+    token
+    expiresAt
+  }
+}
+
+mutation RevokeDelegateInvite($id: ID!) {
+  revokeDelegateInvite(id: $id) {
+    id
+  }
+}
+
+mutation RemoveDelegate($id: ID!) {
+  removeDelegate(id: $id) {
+    id
+  }
+}

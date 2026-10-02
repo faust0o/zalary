@@ -32,10 +32,21 @@ export interface NexusGenScalars {
 }
 
 export interface NexusGenObjects {
+  AuthPayload: { // root type
+    token: string; // String!
+    user: NexusGenRootTypes['User']; // User!
+  }
   DashboardStats: { // root type
     nextPayrollDue?: NexusGenRootTypes['NextPayrollDue'] | null; // NextPayrollDue
     recentRuns: NexusGenRootTypes['PayrollRun'][]; // [PayrollRun!]!
     zecSpentByMonth: NexusGenRootTypes['ZecSpentByMonth'][]; // [ZecSpentByMonth!]!
+  }
+  DelegateInvite: { // root type
+    id: string; // ID!
+  }
+  DelegateInvitePreview: { // root type
+    expiresAt: string; // String!
+    ownerUsername: string; // String!
   }
   Employee: { // root type
     id: string; // ID!
@@ -78,10 +89,10 @@ export interface NexusGenObjects {
   }
   Query: {};
   User: { // root type
-    email: string; // String!
     id: string; // ID!
+    name?: string | null; // String
+    username: string; // String!
     walletBirthdayHeight?: number | null; // Int
-    zcashViewingKey?: string | null; // String
   }
   ZecBalance: { // root type
     available: number; // Float!
@@ -103,10 +114,24 @@ export type NexusGenRootTypes = NexusGenObjects
 export type NexusGenAllTypes = NexusGenRootTypes & NexusGenScalars & NexusGenEnums
 
 export interface NexusGenFieldTypes {
+  AuthPayload: { // field return type
+    token: string; // String!
+    user: NexusGenRootTypes['User']; // User!
+  }
   DashboardStats: { // field return type
     nextPayrollDue: NexusGenRootTypes['NextPayrollDue'] | null; // NextPayrollDue
     recentRuns: NexusGenRootTypes['PayrollRun'][]; // [PayrollRun!]!
     zecSpentByMonth: NexusGenRootTypes['ZecSpentByMonth'][]; // [ZecSpentByMonth!]!
+  }
+  DelegateInvite: { // field return type
+    createdAt: string; // String!
+    expiresAt: string; // String!
+    id: string; // ID!
+    token: string; // String!
+  }
+  DelegateInvitePreview: { // field return type
+    expiresAt: string; // String!
+    ownerUsername: string; // String!
   }
   Employee: { // field return type
     createdAt: string; // String!
@@ -120,13 +145,19 @@ export interface NexusGenFieldTypes {
     walletVerified: boolean; // Boolean!
   }
   Mutation: { // field return type
+    acceptDelegateInvite: NexusGenRootTypes['AuthPayload']; // AuthPayload!
+    changePassword: NexusGenRootTypes['AuthPayload']; // AuthPayload!
     completePayrollRun: NexusGenRootTypes['PayrollRun']; // PayrollRun!
+    createDelegateInvite: NexusGenRootTypes['DelegateInvite']; // DelegateInvite!
     createEmployee: NexusGenRootTypes['Employee']; // Employee!
     createPayroll: NexusGenRootTypes['Payroll']; // Payroll!
     deleteEmployee: NexusGenRootTypes['Employee']; // Employee!
     deletePayroll: NexusGenRootTypes['Payroll']; // Payroll!
     importEmployeesCsv: NexusGenRootTypes['Employee'][]; // [Employee!]!
-    registerUser: NexusGenRootTypes['User']; // User!
+    login: NexusGenRootTypes['AuthPayload']; // AuthPayload!
+    register: NexusGenRootTypes['AuthPayload']; // AuthPayload!
+    removeDelegate: NexusGenRootTypes['User']; // User!
+    revokeDelegateInvite: NexusGenRootTypes['DelegateInvite']; // DelegateInvite!
     startPayrollRun: NexusGenRootTypes['PayrollRun']; // PayrollRun!
     updateEmployee: NexusGenRootTypes['Employee']; // Employee!
     updatePaymentStatus: NexusGenRootTypes['Payment']; // Payment!
@@ -176,6 +207,9 @@ export interface NexusGenFieldTypes {
   }
   Query: { // field return type
     dashboardStats: NexusGenRootTypes['DashboardStats']; // DashboardStats!
+    delegateInvite: NexusGenRootTypes['DelegateInvitePreview'] | null; // DelegateInvitePreview
+    delegateInvites: NexusGenRootTypes['DelegateInvite'][]; // [DelegateInvite!]!
+    delegates: NexusGenRootTypes['User'][]; // [User!]!
     employee: NexusGenRootTypes['Employee'] | null; // Employee
     employees: NexusGenRootTypes['Employee'][]; // [Employee!]!
     me: NexusGenRootTypes['User'] | null; // User
@@ -187,14 +221,16 @@ export interface NexusGenFieldTypes {
   }
   User: { // field return type
     createdAt: string; // String!
-    email: string; // String!
     employees: NexusGenRootTypes['Employee'][]; // [Employee!]!
     hasEmployees: boolean; // Boolean!
     hasPayrolls: boolean; // Boolean!
     hasVerifiedPayment: boolean; // Boolean!
     id: string; // ID!
+    name: string | null; // String
     needsWalkthrough: boolean; // Boolean!
+    owner: NexusGenRootTypes['User'] | null; // User
     payrolls: NexusGenRootTypes['Payroll'][]; // [Payroll!]!
+    username: string; // String!
     walletBirthdayHeight: number | null; // Int
     zcashViewingKey: string | null; // String
   }
@@ -208,10 +244,24 @@ export interface NexusGenFieldTypes {
 }
 
 export interface NexusGenFieldTypeNames {
+  AuthPayload: { // field return type name
+    token: 'String'
+    user: 'User'
+  }
   DashboardStats: { // field return type name
     nextPayrollDue: 'NextPayrollDue'
     recentRuns: 'PayrollRun'
     zecSpentByMonth: 'ZecSpentByMonth'
+  }
+  DelegateInvite: { // field return type name
+    createdAt: 'String'
+    expiresAt: 'String'
+    id: 'ID'
+    token: 'String'
+  }
+  DelegateInvitePreview: { // field return type name
+    expiresAt: 'String'
+    ownerUsername: 'String'
   }
   Employee: { // field return type name
     createdAt: 'String'
@@ -225,13 +275,19 @@ export interface NexusGenFieldTypeNames {
     walletVerified: 'Boolean'
   }
   Mutation: { // field return type name
+    acceptDelegateInvite: 'AuthPayload'
+    changePassword: 'AuthPayload'
     completePayrollRun: 'PayrollRun'
+    createDelegateInvite: 'DelegateInvite'
     createEmployee: 'Employee'
     createPayroll: 'Payroll'
     deleteEmployee: 'Employee'
     deletePayroll: 'Payroll'
     importEmployeesCsv: 'Employee'
-    registerUser: 'User'
+    login: 'AuthPayload'
+    register: 'AuthPayload'
+    removeDelegate: 'User'
+    revokeDelegateInvite: 'DelegateInvite'
     startPayrollRun: 'PayrollRun'
     updateEmployee: 'Employee'
     updatePaymentStatus: 'Payment'
@@ -281,6 +337,9 @@ export interface NexusGenFieldTypeNames {
   }
   Query: { // field return type name
     dashboardStats: 'DashboardStats'
+    delegateInvite: 'DelegateInvitePreview'
+    delegateInvites: 'DelegateInvite'
+    delegates: 'User'
     employee: 'Employee'
     employees: 'Employee'
     me: 'User'
@@ -292,14 +351,16 @@ export interface NexusGenFieldTypeNames {
   }
   User: { // field return type name
     createdAt: 'String'
-    email: 'String'
     employees: 'Employee'
     hasEmployees: 'Boolean'
     hasPayrolls: 'Boolean'
     hasVerifiedPayment: 'Boolean'
     id: 'ID'
+    name: 'String'
     needsWalkthrough: 'Boolean'
+    owner: 'User'
     payrolls: 'Payroll'
+    username: 'String'
     walletBirthdayHeight: 'Int'
     zcashViewingKey: 'String'
   }
@@ -314,6 +375,16 @@ export interface NexusGenFieldTypeNames {
 
 export interface NexusGenArgTypes {
   Mutation: {
+    acceptDelegateInvite: { // args
+      name: string; // String!
+      password: string; // String!
+      token: string; // String!
+      username: string; // String!
+    }
+    changePassword: { // args
+      currentPassword: string; // String!
+      newPassword: string; // String!
+    }
     completePayrollRun: { // args
       runId: string; // ID!
     }
@@ -339,10 +410,19 @@ export interface NexusGenArgTypes {
     importEmployeesCsv: { // args
       csvContent: string; // String!
     }
-    registerUser: { // args
-      email: string; // String!
-      tribeUserId: string; // String!
-      zcashViewingKey?: string | null; // String
+    login: { // args
+      password: string; // String!
+      username: string; // String!
+    }
+    register: { // args
+      password: string; // String!
+      username: string; // String!
+    }
+    removeDelegate: { // args
+      id: string; // ID!
+    }
+    revokeDelegateInvite: { // args
+      id: string; // ID!
     }
     startPayrollRun: { // args
       payrollId: string; // ID!
@@ -373,6 +453,9 @@ export interface NexusGenArgTypes {
     }
   }
   Query: {
+    delegateInvite: { // args
+      token: string; // String!
+    }
     employee: { // args
       id: string; // ID!
     }

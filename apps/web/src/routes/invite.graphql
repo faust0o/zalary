@@ -1,0 +1,6 @@
+query DelegateInvitePreview($token: String!) {
+  delegateInvite(token: $token) {
+    ownerUsername
+    expiresAt
+  }
+}

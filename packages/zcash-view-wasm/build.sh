@@ -14,6 +14,10 @@ MODE="${1:---dev}"
 
 wasm-pack build --target web "$MODE"
 
+# wasm-pack writes pkg/.gitignore with "*". That pattern hides the prebuilt
+# package from Railway uploads even after the files are committed.
+rm -f pkg/.gitignore
+
 # wasm-pack doesn't include snippets/ in the files list; patch it in
 node -e '
   const pkg = require("./pkg/package.json");

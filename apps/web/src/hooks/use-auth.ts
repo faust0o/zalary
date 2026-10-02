@@ -7,76 +7,120 @@ import {
   type ReactNode,
 } from "react"
 import { createElement } from "react"
+import {
+  AcceptDelegateInviteDocument,
+  LoginDocument,
+  MeDocument,
+  RegisterDocument,
+} from "../graphql/__generated__/graphql"
 import { apolloClient } from "../lib/apollo"
-import { tribe } from "../lib/tribe"
 import { clearWalletState } from "../lib/zcash-wallet"
+import {
+  clearSessionToken,
+  getSessionToken,
+  setSessionToken,
+} from "../lib/session"
 
 interface User {
   id: string
-  email?: string | null
+  username: string
 }
 
 interface AuthContextType {
   user: User | null
   loading: boolean
-  login: () => Promise<void>
-  loginWithEmail: (email: string, password: string) => Promise<void>
-  loginWithSocial: (provider: "google" | "discord" | "twitter") => void
-  register: (email: string, password: string) => Promise<User>
-  registerPasskey: (deviceName?: string) => Promise<void>
+  login: (username: string, password: string) => Promise<void>
+  register: (username: string, password: string) => Promise<void>
+  acceptInvite: (
+    token: string,
+    name: string,
+    username: string,
+    password: string
+  ) => Promise<void>
   logout: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
+
+async function establishSession(token: string, user: User) {
+  setSessionToken(token)
+  await apolloClient.clearStore()
+  return user
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    tribe
-      .getSession()
-      .then((session) => {
-        setUser(session?.user ?? null)
+    const token = getSessionToken()
+    if (!token) {
+      setLoading(false)
+      return
+    }
+
+    let cancelled = false
+    apolloClient
+      .query({ query: MeDocument, fetchPolicy: "network-only" })
+      .then((result) => {
+        if (cancelled) return
+        const me = result.data?.me
+        if (me) {
+          setUser(me)
+        } else {
+          clearSessionToken()
+          setUser(null)
+        }
       })
       .catch(() => {
-        setUser(null)
+        if (!cancelled) setUser(null)
       })
       .finally(() => {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       })
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
-  const login = useCallback(async () => {
-    const { user } = await tribe.loginWithPasskey()
-    setUser(user)
-  }, [])
-
-  const loginWithEmail = useCallback(async (email: string, password: string) => {
-    const { user } = await tribe.login(email, password)
-    setUser(user)
-  }, [])
-
-  const loginWithSocial = useCallback((provider: "google" | "discord" | "twitter") => {
-    tribe.redirectToSocialLogin(provider, {
-      redirectUrl: window.location.origin + "/login",
+  const login = useCallback(async (username: string, password: string) => {
+    const result = await apolloClient.mutate({
+      mutation: LoginDocument,
+      variables: { username, password },
     })
+    const payload = result.data?.login
+    if (!payload) throw new Error("Login failed")
+    setUser(await establishSession(payload.token, payload.user))
   }, [])
 
-  const register = useCallback(async (email: string, password: string) => {
-    const { user } = await tribe.register(email, password)
-    setUser(user)
-    return user
+  const register = useCallback(async (username: string, password: string) => {
+    const result = await apolloClient.mutate({
+      mutation: RegisterDocument,
+      variables: { username, password },
+    })
+    const payload = result.data?.register
+    if (!payload) throw new Error("Registration failed")
+    setUser(await establishSession(payload.token, payload.user))
   }, [])
 
-  const registerPasskey = useCallback(async (deviceName?: string) => {
-    await tribe.registerPasskey(deviceName)
-  }, [])
+  const acceptInvite = useCallback(
+    async (token: string, name: string, username: string, password: string) => {
+      const result = await apolloClient.mutate({
+        mutation: AcceptDelegateInviteDocument,
+        variables: { token, name, username, password },
+      })
+      const payload = result.data?.acceptDelegateInvite
+      if (!payload) throw new Error("Could not accept invite")
+      setUser(await establishSession(payload.token, payload.user))
+    },
+    []
+  )
 
   const logout = useCallback(async () => {
     await clearWalletState()
     await apolloClient.clearStore()
-    await tribe.logout()
+    clearSessionToken()
     setUser(null)
   }, [])
 
@@ -87,10 +131,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         loading,
         login,
-        loginWithEmail,
-        loginWithSocial,
         register,
-        registerPasskey,
+        acceptInvite,
         logout,
       },
     },

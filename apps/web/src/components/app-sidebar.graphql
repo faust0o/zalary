@@ -1,7 +1,11 @@
 query MeSidebar {
   me {
     id
-    email
+    username
+    owner {
+      id
+      username
+    }
   }
   zecBalance {
     available

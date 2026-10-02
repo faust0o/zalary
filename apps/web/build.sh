@@ -58,6 +58,10 @@ else
     --out-dir "$WASM_CRATE/pkg" \
     --out-name zcash_view_wasm
 
+  # wasm-pack writes pkg/.gitignore with "*" . Railway's uploader honors that
+  # even for tracked files, which drops the prebuilt package from prod builds.
+  rm -f "$WASM_CRATE/pkg/.gitignore"
+
   echo "==> WASM build complete"
 fi
 

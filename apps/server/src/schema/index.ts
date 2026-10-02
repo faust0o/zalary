@@ -10,6 +10,12 @@ import * as AuthQueries from "./auth/auth.queries.js"
 import * as AuthMutations from "./auth/auth.mutations.js"
 import { authPermissions } from "./auth/auth.permissions.js"
 
+// Delegates
+import * as DelegateTypes from "./delegates/delegates.types.js"
+import * as DelegateQueries from "./delegates/delegates.queries.js"
+import * as DelegateMutations from "./delegates/delegates.mutations.js"
+import { delegatePermissions } from "./delegates/delegates.permissions.js"
+
 // Employees
 import * as EmployeeTypes from "./employees/employees.types.js"
 import * as EmployeeQueries from "./employees/employees.queries.js"
@@ -40,6 +46,9 @@ const baseSchema = makeSchema({
     AuthTypes,
     AuthQueries,
     AuthMutations,
+    DelegateTypes,
+    DelegateQueries,
+    DelegateMutations,
     EmployeeTypes,
     EmployeeQueries,
     EmployeeMutations,
@@ -67,6 +76,7 @@ const permissions = shield(
   {
     Query: {
       ...authPermissions.Query,
+      ...delegatePermissions.Query,
       ...employeePermissions.Query,
       ...payrollPermissions.Query,
       ...paymentPermissions.Query,
@@ -74,6 +84,7 @@ const permissions = shield(
     },
     Mutation: {
       ...authPermissions.Mutation,
+      ...delegatePermissions.Mutation,
       ...employeePermissions.Mutation,
       ...payrollPermissions.Mutation,
       ...paymentPermissions.Mutation,

@@ -13,39 +13,31 @@ import { Progress } from "@workspace/ui/components/progress"
 import {
   AlertCircle,
   CheckCircle,
-  Fingerprint,
   Key,
   Loader2,
   ShieldCheck,
 } from "lucide-react"
 import { useState } from "react"
 import { UpdateUserDocument } from "../graphql/__generated__/graphql"
-import { useAuth } from "../hooks/use-auth"
 import {
   deriveViewingKeyFromSeedPhrase,
   validateSeedPhrase,
   validateViewingKey,
 } from "../lib/zcash-keys"
 
-type Step = "passkey" | "viewing-key" | "verifying" | "done"
+type Step = "viewing-key" | "verifying" | "done"
 type KeyInputMode = "viewing-key" | "seed-phrase"
 
 export function OnboardingModal({
   open,
   onOpenChange,
-  skipPasskey = false,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
-  skipPasskey?: boolean
 }) {
-  const { registerPasskey } = useAuth()
   const [updateUser] = useMutation(UpdateUserDocument)
 
-  const [step, setStep] = useState<Step>(
-    skipPasskey ? "viewing-key" : "passkey"
-  )
-  const [passkeyDone, setPasskeyDone] = useState(skipPasskey)
+  const [step, setStep] = useState<Step>("viewing-key")
   const [keyInputMode, setKeyInputMode] = useState<KeyInputMode>("viewing-key")
   const [viewingKey, setViewingKey] = useState("")
   const [seedPhrase, setSeedPhrase] = useState("")
@@ -53,30 +45,7 @@ export function OnboardingModal({
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const progress =
-    step === "passkey"
-      ? 33
-      : step === "viewing-key"
-        ? 66
-        : step === "verifying"
-          ? 80
-          : 100
-
-  async function handlePasskey() {
-    setError(null)
-    setIsSubmitting(true)
-    try {
-      await registerPasskey("Zalary")
-      setPasskeyDone(true)
-      setStep("viewing-key")
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to register passkey"
-      )
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
+  const progress = step === "viewing-key" ? 40 : step === "verifying" ? 75 : 100
 
   async function handleSubmitKey() {
     setError(null)
@@ -160,49 +129,6 @@ export function OnboardingModal({
 
         <Progress value={progress} className="mb-2" />
 
-        {step === "passkey" && (
-          <div className="space-y-6 py-4">
-            <div className="flex flex-col items-center text-center">
-              <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-primary/10">
-                <Fingerprint className="size-8 text-primary" />
-              </div>
-              <h3 className="text-lg font-semibold">Register a Passkey</h3>
-              <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-                Passkeys provide secure, passwordless login. You can use your
-                fingerprint, face, or security key.
-              </p>
-            </div>
-
-            {error && (
-              <div className="flex items-center gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-                <AlertCircle className="size-4 shrink-0" />
-                {error}
-              </div>
-            )}
-
-            <div className="flex flex-col gap-2">
-              <Button onClick={handlePasskey} disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <Loader2 className="mr-2 size-4 animate-spin" />
-                ) : (
-                  <Fingerprint className="mr-2 size-4" />
-                )}
-                {isSubmitting ? "Registering..." : "Register Passkey"}
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setPasskeyDone(false)
-                  setStep("viewing-key")
-                  setError(null)
-                }}
-              >
-                Skip for now
-              </Button>
-            </div>
-          </div>
-        )}
-
         {step === "viewing-key" && (
           <div className="space-y-6 py-4">
             <div className="flex flex-col items-center text-center">
@@ -278,7 +204,8 @@ export function OnboardingModal({
 
             <div className="space-y-2">
               <Label htmlFor="birthday-height">
-                Wallet Birthday Height <span className="text-destructive">*</span>
+                Wallet Birthday Height{" "}
+                <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="birthday-height"
@@ -340,9 +267,7 @@ export function OnboardingModal({
             </div>
             <h3 className="text-lg font-semibold">You're all set!</h3>
             <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-              {passkeyDone
-                ? "Your passkey and viewing key are configured."
-                : "Your viewing key is configured. You can add a passkey later in Settings."}
+              Your viewing key is configured.
             </p>
             <Button className="mt-6" onClick={() => onOpenChange(false)}>
               Get Started

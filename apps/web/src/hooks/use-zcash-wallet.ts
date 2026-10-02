@@ -9,6 +9,7 @@ import {
 } from "react"
 import { createElement } from "react"
 import {
+  deriveUnifiedAddress,
   initializeWallet,
   syncWallet,
   getBalance,
@@ -29,6 +30,9 @@ interface ZcashWalletState {
 }
 
 interface ZcashWalletContextType extends ZcashWalletState {
+  /** Default shielded unified address derived from the UFVK */
+  address: string | null
+  addressError: string | null
   sync: () => Promise<SyncSummary | null>
   getSentTxs: () => Promise<SentTransaction[]>
   syncProgress: number | null
@@ -41,6 +45,8 @@ const ZcashWalletContext = createContext<ZcashWalletContextType>({
   lastSyncedHeight: null,
   chainTipHeight: null,
   error: null,
+  address: null,
+  addressError: null,
   sync: async () => null,
   getSentTxs: async () => [],
   syncProgress: null,
@@ -64,6 +70,28 @@ export function ZcashWalletProvider({
     error: null,
   })
   const syncingRef = useRef(false)
+  const [address, setAddress] = useState<string | null>(null)
+  const [addressError, setAddressError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!ufvk) return
+    let cancelled = false
+    deriveUnifiedAddress(ufvk)
+      .then((ua) => {
+        if (cancelled) return
+        setAddress(ua)
+        setAddressError(null)
+      })
+      .catch((e) => {
+        console.error("Failed to derive address:", e)
+        if (cancelled) return
+        setAddress(null)
+        setAddressError(e instanceof Error ? e.message : "Invalid viewing key")
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [ufvk])
 
   // Initialize wallet when UFVK becomes available
   useEffect(() => {
@@ -160,7 +188,16 @@ export function ZcashWalletProvider({
 
   return createElement(
     ZcashWalletContext.Provider,
-    { value: { ...state, sync, getSentTxs, syncProgress } },
+    {
+      value: {
+        ...state,
+        address,
+        addressError,
+        sync,
+        getSentTxs,
+        syncProgress,
+      },
+    },
     children
   )
 }
