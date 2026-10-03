@@ -14,6 +14,7 @@ export const authPermissions: {
     acceptDelegateInvite: allow,
     login: allow,
     changePassword: isAuthenticated,
+    deleteAccount: isAuthenticated,
     updateUser: isAccountOwner,
   },
 }

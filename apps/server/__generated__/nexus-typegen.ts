@@ -151,6 +151,7 @@ export interface NexusGenFieldTypes {
     createDelegateInvite: NexusGenRootTypes['DelegateInvite']; // DelegateInvite!
     createEmployee: NexusGenRootTypes['Employee']; // Employee!
     createPayroll: NexusGenRootTypes['Payroll']; // Payroll!
+    deleteAccount: boolean; // Boolean!
     deleteEmployee: NexusGenRootTypes['Employee']; // Employee!
     deletePayroll: NexusGenRootTypes['Payroll']; // Payroll!
     importEmployeesCsv: NexusGenRootTypes['Employee'][]; // [Employee!]!
@@ -281,6 +282,7 @@ export interface NexusGenFieldTypeNames {
     createDelegateInvite: 'DelegateInvite'
     createEmployee: 'Employee'
     createPayroll: 'Payroll'
+    deleteAccount: 'Boolean'
     deleteEmployee: 'Employee'
     deletePayroll: 'Payroll'
     importEmployeesCsv: 'Employee'

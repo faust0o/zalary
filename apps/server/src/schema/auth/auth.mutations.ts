@@ -215,6 +215,40 @@ export const changePassword = mutationField("changePassword", {
   },
 })
 
+/**
+ * Delete the signed-in user. For an account owner this also deletes all of the
+ * account's payroll data and its delegates; a delegate only deletes their own
+ * login.
+ */
+export const deleteAccount = mutationField("deleteAccount", {
+  type: nonNull("Boolean"),
+  async resolve(_parent, _args, ctx) {
+    const { userId, accountId } = ctx
+    if (!userId) throw new GraphQLError("Not authenticated")
+
+    if (accountId !== userId) {
+      await ctx.prisma.user.delete({ where: { id: userId } })
+      return true
+    }
+
+    // Payments, runs, payrolls and employees don't cascade from User, so they
+    // go first, children before parents. Deleting the user then cascades to
+    // delegates and invites.
+    await ctx.prisma.$transaction([
+      ctx.prisma.payment.deleteMany({
+        where: {
+          OR: [{ payroll: { userId } }, { employee: { userId } }],
+        },
+      }),
+      ctx.prisma.payrollRun.deleteMany({ where: { payroll: { userId } } }),
+      ctx.prisma.payroll.deleteMany({ where: { userId } }),
+      ctx.prisma.employee.deleteMany({ where: { userId } }),
+      ctx.prisma.user.delete({ where: { id: userId } }),
+    ])
+    return true
+  },
+})
+
 export const updateUser = mutationField("updateUser", {
   type: nonNull("User"),
   args: {
