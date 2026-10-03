@@ -32,3 +32,7 @@ mutation ChangePassword($currentPassword: String!, $newPassword: String!) {
     }
   }
 }
+
+mutation DeleteAccount {
+  deleteAccount
+}
