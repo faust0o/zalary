@@ -224,8 +224,10 @@ export interface NexusGenFieldTypes {
     createdAt: string; // String!
     employees: NexusGenRootTypes['Employee'][]; // [Employee!]!
     hasEmployees: boolean; // Boolean!
+    hasPayrollRun: boolean; // Boolean!
     hasPayrolls: boolean; // Boolean!
     hasVerifiedPayment: boolean; // Boolean!
+    hasWallet: boolean; // Boolean!
     id: string; // ID!
     name: string | null; // String
     needsWalkthrough: boolean; // Boolean!
@@ -355,8 +357,10 @@ export interface NexusGenFieldTypeNames {
     createdAt: 'String'
     employees: 'Employee'
     hasEmployees: 'Boolean'
+    hasPayrollRun: 'Boolean'
     hasPayrolls: 'Boolean'
     hasVerifiedPayment: 'Boolean'
+    hasWallet: 'Boolean'
     id: 'ID'
     name: 'String'
     needsWalkthrough: 'Boolean'

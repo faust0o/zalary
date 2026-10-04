@@ -87,9 +87,28 @@ export const User = objectType({
         return count > 0
       },
     })
+    // Payments can't be verified before a wallet is connected, so the
+    // walkthrough counts a started run as having made a payment.
+    t.nonNull.boolean("hasPayrollRun", {
+      async resolve(parent, _args, ctx) {
+        const count = await ctx.prisma.payrollRun.count({
+          where: { payroll: { userId: accountIdOf(parent) } },
+          take: 1,
+        })
+        return count > 0
+      },
+    })
+    t.nonNull.boolean("hasWallet", {
+      async resolve(parent, _args, ctx) {
+        const account = parent.ownerId
+          ? await ctx.prisma.user.findUnique({ where: { id: parent.ownerId } })
+          : parent
+        return !!account?.zcashViewingKey && !!account.walletBirthdayHeight
+      },
+    })
     t.nonNull.boolean("needsWalkthrough", {
       async resolve(parent, _args, ctx) {
-        const [employees, payrolls, payments] = await Promise.all([
+        const [employees, payrolls, runs] = await Promise.all([
           ctx.prisma.employee.count({
             where: { userId: accountIdOf(parent) },
             take: 1,
@@ -98,16 +117,17 @@ export const User = objectType({
             where: { userId: accountIdOf(parent) },
             take: 1,
           }),
-          ctx.prisma.payment.count({
-            where: {
-              payroll: { userId: accountIdOf(parent) },
-              status: "COMPLETED",
-              txHash: { not: null },
-            },
+          ctx.prisma.payrollRun.count({
+            where: { payroll: { userId: accountIdOf(parent) } },
             take: 1,
           }),
         ])
-        return employees === 0 || payrolls === 0 || payments === 0
+        // Only the owner can connect the wallet, so it doesn't hold up
+        // a delegate's walkthrough.
+        const needsWallet =
+          !parent.ownerId &&
+          (!parent.zcashViewingKey || !parent.walletBirthdayHeight)
+        return employees === 0 || payrolls === 0 || runs === 0 || needsWallet
       },
     })
   },
