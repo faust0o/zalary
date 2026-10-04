@@ -23,49 +23,27 @@ const STORAGE_KEY = "zalary-walkthrough-collapsed"
 interface Step {
   label: string
   description: string
-  path: string
   actionLabel: string
+  completed: boolean
+  onAction: () => void
 }
-
-const STEPS: Step[] = [
-  {
-    label: "Add an employee",
-    description:
-      "Head to Employees and add your first team member with their Zcash wallet address.",
-    path: "/employees",
-    actionLabel: "Go to Employees",
-  },
-  {
-    label: "Create a payroll",
-    description:
-      "Set up a payroll schedule and assign employees to it.",
-    path: "/payrolls",
-    actionLabel: "Go to Payrolls",
-  },
-  {
-    label: "Make a payment",
-    description:
-      "Run a payroll and complete a Zcash payment on-chain.",
-    path: "/payrolls",
-    actionLabel: "Go to Payrolls",
-  },
-]
 
 function getStepStatus(
   index: number,
-  hasEmployees: boolean,
-  hasPayrolls: boolean,
-  hasVerifiedPayment: boolean,
+  steps: Step[],
 ): "completed" | "current" | "locked" {
-  const completed = [hasEmployees, hasPayrolls, hasVerifiedPayment]
-  if (completed[index]) return "completed"
+  if (steps[index].completed) return "completed"
   // Current = first incomplete step where all previous steps are done
-  const allPreviousDone = completed.slice(0, index).every(Boolean)
+  const allPreviousDone = steps.slice(0, index).every((s) => s.completed)
   if (allPreviousDone) return "current"
   return "locked"
 }
 
-export function Walkthrough() {
+export function Walkthrough({
+  onConnectWallet,
+}: {
+  onConnectWallet: () => void
+}) {
   const { data, loading } = useQuery(WalkthroughStatusDocument, {
     pollInterval: 10_000,
   })
@@ -89,10 +67,42 @@ export function Walkthrough() {
   if (loading || !data?.me) return null
   if (!data.me.needsWalkthrough) return null
 
-  const { hasEmployees, hasPayrolls, hasVerifiedPayment } = data.me
-  const completedCount = [hasEmployees, hasPayrolls, hasVerifiedPayment].filter(
-    Boolean,
-  ).length
+  const steps: Step[] = [
+    {
+      label: "Add an employee",
+      description:
+        "Head to Employees and add your first team member with their Zcash wallet address.",
+      actionLabel: "Go to Employees",
+      completed: data.me.hasEmployees,
+      onAction: () => navigate("/employees"),
+    },
+    {
+      label: "Create a payroll",
+      description: "Set up a payroll schedule and assign employees to it.",
+      actionLabel: "Go to Payrolls",
+      completed: data.me.hasPayrolls,
+      onAction: () => navigate("/payrolls"),
+    },
+    {
+      label: "Make a payment",
+      description: "Run a payroll and pay your team by scanning the QR codes.",
+      actionLabel: "Go to Payrolls",
+      completed: data.me.hasPayrollRun,
+      onAction: () => navigate("/payrolls"),
+    },
+  ]
+  // Delegates use their owner's wallet and can't connect one themselves
+  if (!data.me.owner) {
+    steps.push({
+      label: "Connect your wallet",
+      description:
+        "Add your viewing key so Zalary can show your balance and verify payments.",
+      actionLabel: "Connect wallet",
+      completed: data.me.hasWallet,
+      onAction: onConnectWallet,
+    })
+  }
+  const completedCount = steps.filter((s) => s.completed).length
 
   return (
     <div className="fixed right-4 bottom-4 z-50 w-80">
@@ -110,7 +120,7 @@ export function Walkthrough() {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-muted-foreground text-xs">
-                {completedCount}/3
+                {completedCount}/{steps.length}
               </span>
               {collapsed ? (
                 <ChevronUp className="text-muted-foreground h-4 w-4" />
@@ -123,7 +133,7 @@ export function Walkthrough() {
           <div className="bg-muted mt-3 h-1.5 w-full overflow-hidden rounded-full">
             <div
               className="bg-primary h-full rounded-full transition-all duration-500"
-              style={{ width: `${(completedCount / 3) * 100}%` }}
+              style={{ width: `${(completedCount / steps.length) * 100}%` }}
             />
           </div>
         </CardHeader>
@@ -131,13 +141,8 @@ export function Walkthrough() {
         {!collapsed && (
           <CardContent className="p-4 pt-3">
             <ol className="space-y-3">
-              {STEPS.map((step, i) => {
-                const status = getStepStatus(
-                  i,
-                  hasEmployees,
-                  hasPayrolls,
-                  hasVerifiedPayment,
-                )
+              {steps.map((step, i) => {
+                const status = getStepStatus(i, steps)
                 return (
                   <li
                     key={i}
@@ -173,7 +178,7 @@ export function Walkthrough() {
                             size="sm"
                             variant="outline"
                             className="mt-2 h-7 text-xs"
-                            onClick={() => navigate(step.path)}
+                            onClick={step.onAction}
                           >
                             {step.actionLabel}
                           </Button>

@@ -18,7 +18,10 @@ import {
   ShieldCheck,
 } from "lucide-react"
 import { useState } from "react"
-import { UpdateUserDocument } from "../graphql/__generated__/graphql"
+import {
+  UpdateUserDocument,
+  WalkthroughStatusDocument,
+} from "../graphql/__generated__/graphql"
 import {
   deriveViewingKeyFromSeedPhrase,
   validateSeedPhrase,
@@ -28,14 +31,16 @@ import {
 type Step = "viewing-key" | "verifying" | "done"
 type KeyInputMode = "viewing-key" | "seed-phrase"
 
-export function OnboardingModal({
+export function ConnectWalletModal({
   open,
   onOpenChange,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
-  const [updateUser] = useMutation(UpdateUserDocument)
+  const [updateUser] = useMutation(UpdateUserDocument, {
+    refetchQueries: [WalkthroughStatusDocument],
+  })
 
   const [step, setStep] = useState<Step>("viewing-key")
   const [keyInputMode, setKeyInputMode] = useState<KeyInputMode>("viewing-key")
@@ -74,15 +79,16 @@ export function OnboardingModal({
         return
       }
 
-      setStep("verifying")
-
-      // Key is validated via WASM — save it along with birthday height
       const parsedHeight = parseInt(birthdayHeight.trim(), 10)
       if (!parsedHeight || isNaN(parsedHeight)) {
         setError("Please enter a valid wallet birthday height.")
         setIsSubmitting(false)
         return
       }
+
+      setStep("verifying")
+
+      // Key is validated via WASM — save it along with birthday height
       await updateUser({
         variables: {
           zcashViewingKey: key,
@@ -99,31 +105,21 @@ export function OnboardingModal({
     }
   }
 
-  function handleClose() {
-    if (step === "done") {
-      onOpenChange(false)
-    }
-  }
+  // Don't let the dialog close while the key is being saved
+  const canClose = !isSubmitting && step !== "verifying"
 
   return (
     <Dialog
       open={open}
-      onOpenChange={step === "done" ? handleClose : undefined}
+      onOpenChange={(next) => {
+        if (next || canClose) onOpenChange(next)
+      }}
     >
-      <DialogContent
-        className="max-w-lg"
-        showCloseButton={step === "done"}
-        onPointerDownOutside={(e) => {
-          if (step !== "done") e.preventDefault()
-        }}
-        onEscapeKeyDown={(e) => {
-          if (step !== "done") e.preventDefault()
-        }}
-      >
+      <DialogContent className="max-w-lg" showCloseButton={canClose}>
         <DialogHeader>
-          <DialogTitle>Set Up Your Wallet</DialogTitle>
+          <DialogTitle>Connect Your Wallet</DialogTitle>
           <DialogDescription>
-            Complete these steps to start using Zalary.
+            Zalary only needs read access. Your funds stay in your wallet.
           </DialogDescription>
         </DialogHeader>
 
@@ -267,10 +263,10 @@ export function OnboardingModal({
             </div>
             <h3 className="text-lg font-semibold">You're all set!</h3>
             <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-              Your viewing key is configured.
+              Your wallet is connected. Zalary will now sync your balance.
             </p>
             <Button className="mt-6" onClick={() => onOpenChange(false)}>
-              Get Started
+              Done
             </Button>
           </div>
         )}

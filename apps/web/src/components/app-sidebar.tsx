@@ -25,6 +25,7 @@ import {
   Settings,
   Sun,
   Users,
+  Wallet,
 } from "lucide-react"
 import { useCallback, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
@@ -63,6 +64,8 @@ export interface AppSidebarProps {
   hideSettings?: boolean
   /** Override the Top Up button action (defaults to the swap dialog) */
   onTopUp?: () => void
+  /** Set while the account has no wallet: replaces the balance with a prompt */
+  onConnectWallet?: () => void
 }
 
 export function AppSidebar({
@@ -73,6 +76,7 @@ export function AppSidebar({
   hideWalletSync,
   hideSettings,
   onTopUp,
+  onConnectWallet,
 }: AppSidebarProps = {}) {
   const location = useLocation()
   const navigate = useNavigate()
@@ -177,6 +181,15 @@ export function AppSidebar({
                 <p className="truncate text-sm font-medium">
                   for @{owner.username}
                 </p>
+              ) : onConnectWallet ? (
+                <button
+                  type="button"
+                  onClick={onConnectWallet}
+                  className="flex cursor-pointer items-center gap-1.5 text-lg font-medium text-[var(--primary-dark)] hover:underline dark:text-primary"
+                >
+                  <Wallet className="size-4" />
+                  Connect wallet
+                </button>
               ) : (
                 <p className="text-xl font-medium">
                   {balance >= 1_000
@@ -224,7 +237,7 @@ export function AppSidebar({
           <>
             <Button
               className="w-full"
-              onClick={onTopUp ?? (() => setTopUpOpen(true))}
+              onClick={onTopUp ?? onConnectWallet ?? (() => setTopUpOpen(true))}
             >
               <Plus />
               Top Up

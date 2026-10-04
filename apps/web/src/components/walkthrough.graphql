@@ -4,6 +4,10 @@ query WalkthroughStatus {
     needsWalkthrough
     hasEmployees
     hasPayrolls
-    hasVerifiedPayment
+    hasPayrollRun
+    hasWallet
+    owner {
+      id
+    }
   }
 }

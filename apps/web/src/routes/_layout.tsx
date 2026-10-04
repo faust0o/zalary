@@ -5,8 +5,8 @@ import { useState } from "react"
 import { Navigate, Outlet } from "react-router-dom"
 import { AppSidebar } from "../components/app-sidebar"
 import { CoiGuard } from "../components/coi-guard"
+import { ConnectWalletModal } from "../components/connect-wallet-modal"
 import { MobileGuard } from "../components/mobile-guard"
-import { OnboardingModal } from "../components/onboarding-modal"
 import { Walkthrough } from "../components/walkthrough"
 import { MeLayoutDocument } from "../graphql/__generated__/graphql"
 import { useAuth } from "../hooks/use-auth"
@@ -19,7 +19,7 @@ export function Layout() {
     loading: meLoading,
     refetch: refetchMe,
   } = useQuery(MeLayoutDocument, { skip: !user })
-  const [onboardingDismissed, setOnboardingDismissed] = useState(false)
+  const [connectWalletOpen, setConnectWalletOpen] = useState(false)
 
   const meLoaded = !meLoading && meData?.me != null
   const missingWalletConfig =
@@ -27,8 +27,8 @@ export function Layout() {
     (!meData.me?.zcashViewingKey || !meData.me?.walletBirthdayHeight)
 
   // Only the owner can set the wallet up; delegates use the owner's.
-  const needsOnboarding = missingWalletConfig && !meData.me?.owner
-  const onboardingOpen = needsOnboarding && !onboardingDismissed
+  const needsWallet = missingWalletConfig && !meData.me?.owner
+  const openConnectWallet = () => setConnectWalletOpen(true)
 
   if (loading) {
     return (
@@ -57,7 +57,9 @@ export function Layout() {
         <ZcashWalletProvider ufvk={ufvk} birthdayHeight={birthdayHeight}>
           <TooltipProvider>
             <SidebarProvider>
-              <AppSidebar />
+              <AppSidebar
+                onConnectWallet={needsWallet ? openConnectWallet : undefined}
+              />
               <SidebarInset>
                 <main className="flex-1 overflow-auto bg-gray-50 p-6 dark:bg-neutral-900">
                   <div className="mx-auto w-full max-w-5xl">
@@ -65,16 +67,14 @@ export function Layout() {
                   </div>
                 </main>
               </SidebarInset>
-              <OnboardingModal
-                open={onboardingOpen}
+              <ConnectWalletModal
+                open={connectWalletOpen}
                 onOpenChange={(open) => {
-                  if (!open) {
-                    setOnboardingDismissed(true)
-                    refetchMe()
-                  }
+                  setConnectWalletOpen(open)
+                  if (!open) refetchMe()
                 }}
               />
-              <Walkthrough />
+              <Walkthrough onConnectWallet={openConnectWallet} />
             </SidebarProvider>
           </TooltipProvider>
         </ZcashWalletProvider>
