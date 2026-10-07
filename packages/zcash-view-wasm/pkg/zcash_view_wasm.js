@@ -2,6 +2,137 @@
 import { startWorkers } from './snippets/wasm-bindgen-rayon-38edf6e439f6d70d/src/workerHelpers.js';
 
 
+/**
+ * A FROST(Pallas, BLAKE2b-512) DKG participant speaking frost-client's
+ * frostd message protocol. Outgoing messages must be sent in the returned order
+ * (they share per-recipient Noise channels); on a network error, resend the same
+ * bytes rather than calling `start`/`receive` again.
+ */
+export class FrostDkg {
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        FrostDkgFinalization.unregister(this);
+        return ptr;
+    }
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_frostdkg_free(ptr, 0);
+    }
+    /**
+     * The FROST identifier of the participant with the given comms public key.
+     * @param {string} pubkey
+     * @returns {string}
+     */
+    identifierOf(pubkey) {
+        let deferred3_0;
+        let deferred3_1;
+        try {
+            const ptr0 = passStringToWasm0(pubkey, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+            const len0 = WASM_VECTOR_LEN;
+            const ret = wasm.frostdkg_identifierOf(this.__wbg_ptr, ptr0, len0);
+            var ptr2 = ret[0];
+            var len2 = ret[1];
+            if (ret[3]) {
+                ptr2 = 0; len2 = 0;
+                throw takeFromExternrefTable0(ret[2]);
+            }
+            deferred3_0 = ptr2;
+            deferred3_1 = len2;
+            return getStringFromWasm0(ptr2, len2);
+        } finally {
+            wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
+        }
+    }
+    /**
+     * Our FROST identifier (hex, as frost-core serializes it).
+     * @returns {string}
+     */
+    identifier() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.frostdkg_identifier(this.__wbg_ptr);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
+     * @returns {boolean}
+     */
+    isComplete() {
+        const ret = wasm.frostdkg_isComplete(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
+     * `participants` are the hex comms public keys of everyone in the frostd
+     * session, including our own.
+     * @param {Uint8Array} secret
+     * @param {string} session_id
+     * @param {string[]} participants
+     * @param {number} min_signers
+     */
+    constructor(secret, session_id, participants, min_signers) {
+        const ptr0 = passArray8ToWasm0(secret, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(session_id, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ptr2 = passArrayJsValueToWasm0(participants, wasm.__wbindgen_malloc);
+        const len2 = WASM_VECTOR_LEN;
+        const ret = wasm.frostdkg_new(ptr0, len0, ptr1, len1, ptr2, len2, min_signers);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        this.__wbg_ptr = ret[0];
+        FrostDkgFinalization.register(this, this.__wbg_ptr, this);
+        return this;
+    }
+    /**
+     * Processes a message from `sender` (hex comms public key) and returns the
+     * messages it triggers (echo broadcasts, round 2 packages).
+     * @param {string} sender
+     * @param {Uint8Array} msg
+     * @returns {DkgMessage[]}
+     */
+    receive(sender, msg) {
+        const ptr0 = passStringToWasm0(sender, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passArray8ToWasm0(msg, wasm.__wbindgen_malloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.frostdkg_receive(this.__wbg_ptr, ptr0, len0, ptr1, len1);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * The key material, once `isComplete()`. `keyPackage` is secret.
+     * @returns {DkgResult}
+     */
+    result() {
+        const ret = wasm.frostdkg_result(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * Runs DKG part 1 and returns the round 1 messages for every other participant.
+     * @returns {DkgMessage[]}
+     */
+    start() {
+        const ret = wasm.frostdkg_start(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+}
+if (Symbol.dispose) FrostDkg.prototype[Symbol.dispose] = FrostDkg.prototype.free;
+
 class IntoUnderlyingByteSource {
     __destroy_into_raw() {
         const ptr = this.__wbg_ptr;
@@ -131,30 +262,71 @@ export class ZcashViewWallet {
         wasm.__wbg_zcashviewwallet_free(ptr, 0);
     }
     /**
-     * @param {string} lightwalletd_url
-     * @param {string} ufvk_str
-     * @param {bigint} birthday_height
-     * @returns {Promise<ZcashViewWallet>}
+     * Builds an unproven, unsigned PCZT paying a ZIP 321 request
+     * (`zcash:?address=..&amount=..&memo=..&address.1=..`) from this wallet's
+     * account, expiring `expiryDelta` blocks after its target height. The wallet
+     * must be synced. Sapling-only and TEX recipients are rejected.
+     * @param {string} payment_request_uri
+     * @param {number} expiry_delta
+     * @returns {Promise<Uint8Array>}
      */
-    static create(lightwalletd_url, ufvk_str, birthday_height) {
-        const ptr0 = passStringToWasm0(lightwalletd_url, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    createPczt(payment_request_uri, expiry_delta) {
+        const ptr0 = passStringToWasm0(payment_request_uri, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
-        const ptr1 = passStringToWasm0(ufvk_str, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len1 = WASM_VECTOR_LEN;
-        const ret = wasm.zcashviewwallet_create(ptr0, len0, ptr1, len1, birthday_height);
+        const ret = wasm.zcashviewwallet_createPczt(this.__wbg_ptr, ptr0, len0, expiry_delta);
         return ret;
     }
     /**
      * @param {string} lightwalletd_url
-     * @param {Uint8Array} saved_state
+     * @param {string} ufvk_str
+     * @param {number} birthday_height
+     * @param {string} network
      * @returns {Promise<ZcashViewWallet>}
      */
-    static fromBytes(lightwalletd_url, saved_state) {
+    static create(lightwalletd_url, ufvk_str, birthday_height, network) {
+        const ptr0 = passStringToWasm0(lightwalletd_url, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(ufvk_str, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ptr2 = passStringToWasm0(network, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len2 = WASM_VECTOR_LEN;
+        const ret = wasm.zcashviewwallet_create(ptr0, len0, ptr1, len1, birthday_height, ptr2, len2);
+        return ret;
+    }
+    /**
+     * Extracts the transaction from a proven, fully signed PCZT and records it
+     * in the wallet (so balances and sent transactions update), without
+     * sending it. Returns `{ txid, raw }`: the txid (hex, display order) and
+     * the serialized transaction, which the caller broadcasts.
+     * @param {Uint8Array} pczt
+     * @returns {any}
+     */
+    extractTransaction(pczt) {
+        const ptr0 = passArray8ToWasm0(pczt, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.zcashviewwallet_extractTransaction(this.__wbg_ptr, ptr0, len0);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * Restores a wallet saved with `toBytes`. The saved state records its
+     * network, which must match `network`; states saved before the network was
+     * recorded are mainnet wallets.
+     * @param {string} lightwalletd_url
+     * @param {Uint8Array} saved_state
+     * @param {string} network
+     * @returns {Promise<ZcashViewWallet>}
+     */
+    static fromBytes(lightwalletd_url, saved_state, network) {
         const ptr0 = passStringToWasm0(lightwalletd_url, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
         const ptr1 = passArray8ToWasm0(saved_state, wasm.__wbindgen_malloc);
         const len1 = WASM_VECTOR_LEN;
-        const ret = wasm.zcashviewwallet_fromBytes(ptr0, len0, ptr1, len1);
+        const ptr2 = passStringToWasm0(network, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len2 = WASM_VECTOR_LEN;
+        const ret = wasm.zcashviewwallet_fromBytes(ptr0, len0, ptr1, len1, ptr2, len2);
         return ret;
     }
     /**
@@ -211,6 +383,7 @@ export class ZcashViewWallet {
         return ret;
     }
     /**
+     * Serializes the wallet, prefixed with a header recording its network.
      * @returns {Uint8Array}
      */
     toBytes() {
@@ -226,23 +399,227 @@ export class ZcashViewWallet {
 if (Symbol.dispose) ZcashViewWallet.prototype[Symbol.dispose] = ZcashViewWallet.prototype.free;
 
 /**
+ * Hex X25519 public key of a 32-byte frostd comms private key.
+ * @param {Uint8Array} secret
+ * @returns {string}
+ */
+export function commsPublicKey(secret) {
+    let deferred3_0;
+    let deferred3_1;
+    try {
+        const ptr0 = passArray8ToWasm0(secret, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.commsPublicKey(ptr0, len0);
+        var ptr2 = ret[0];
+        var len2 = ret[1];
+        if (ret[3]) {
+            ptr2 = 0; len2 = 0;
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        deferred3_0 = ptr2;
+        deferred3_1 = len2;
+        return getStringFromWasm0(ptr2, len2);
+    } finally {
+        wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
+    }
+}
+
+/**
  * Derive a shielded unified address for a UFVK, starting the search at the given
  * 11-byte diversifier index (or index 0 for the default address). Transparent
  * receivers are omitted because the view wallet only scans Sapling and Orchard.
  * Notes sent to any diversified address are detected by the same viewing key.
+ *
+ * `network` is "main" (default) or "test".
  * @param {string} ufvk_str
+ * @param {string | null} [network]
  * @param {Uint8Array | null} [diversifier_index]
  * @returns {string}
  */
-export function deriveUnifiedAddress(ufvk_str, diversifier_index) {
-    let deferred4_0;
-    let deferred4_1;
+export function deriveUnifiedAddress(ufvk_str, network, diversifier_index) {
+    let deferred5_0;
+    let deferred5_1;
     try {
         const ptr0 = passStringToWasm0(ufvk_str, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
-        var ptr1 = isLikeNone(diversifier_index) ? 0 : passArray8ToWasm0(diversifier_index, wasm.__wbindgen_malloc);
+        var ptr1 = isLikeNone(network) ? 0 : passStringToWasm0(network, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         var len1 = WASM_VECTOR_LEN;
-        const ret = wasm.deriveUnifiedAddress(ptr0, len0, ptr1, len1);
+        var ptr2 = isLikeNone(diversifier_index) ? 0 : passArray8ToWasm0(diversifier_index, wasm.__wbindgen_malloc);
+        var len2 = WASM_VECTOR_LEN;
+        const ret = wasm.deriveUnifiedAddress(ptr0, len0, ptr1, len1, ptr2, len2);
+        var ptr4 = ret[0];
+        var len4 = ret[1];
+        if (ret[3]) {
+            ptr4 = 0; len4 = 0;
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        deferred5_0 = ptr4;
+        deferred5_1 = len4;
+        return getStringFromWasm0(ptr4, len4);
+    } finally {
+        wasm.__wbindgen_free(deferred5_0, deferred5_1, 1);
+    }
+}
+
+/**
+ * Coordinator: aggregates shares into one hex 64-byte RedPallas signature per
+ * spend. `shares` is a JSON string of an object mapping identifier hex to the
+ * `Vec<SignatureShare>` payload each signer sent.
+ * @param {string} signing_package_args
+ * @param {string} shares
+ * @param {string} public_key_package
+ * @returns {string[]}
+ */
+export function frostAggregate(signing_package_args, shares, public_key_package) {
+    const ptr0 = passStringToWasm0(signing_package_args, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(shares, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passStringToWasm0(public_key_package, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ret = wasm.frostAggregate(ptr0, len0, ptr1, len1, ptr2, len2);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v4 = getArrayJsValueFromWasm0(ret[0], ret[1]);
+    wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+    return v4;
+}
+
+/**
+ * Coordinator: builds frost-client's `SendSigningPackageArgs` JSON.
+ * `commitments` is a JSON string of an object mapping each signer's identifier
+ * hex to the `Vec<SigningCommitments>` payload it sent, e.g.
+ * `JSON.stringify({ [id]: JSON.parse(payloadText) })`.
+ * @param {string} commitments
+ * @param {string} sighash
+ * @param {string[]} randomizers
+ * @returns {string}
+ */
+export function frostBuildSigningPackage(commitments, sighash, randomizers) {
+    let deferred5_0;
+    let deferred5_1;
+    try {
+        const ptr0 = passStringToWasm0(commitments, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(sighash, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ptr2 = passArrayJsValueToWasm0(randomizers, wasm.__wbindgen_malloc);
+        const len2 = WASM_VECTOR_LEN;
+        const ret = wasm.frostBuildSigningPackage(ptr0, len0, ptr1, len1, ptr2, len2);
+        var ptr4 = ret[0];
+        var len4 = ret[1];
+        if (ret[3]) {
+            ptr4 = 0; len4 = 0;
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        deferred5_0 = ptr4;
+        deferred5_1 = len4;
+        return getStringFromWasm0(ptr4, len4);
+    } finally {
+        wasm.__wbindgen_free(deferred5_0, deferred5_1, 1);
+    }
+}
+
+/**
+ * Round 1: `count` nonce/commitment pairs, one per spend. `nonces` is secret and
+ * single-use; `commitments` is the frost-client participant payload.
+ * @param {string} key_package
+ * @param {number} count
+ * @returns {FrostCommitResult}
+ */
+export function frostCommit(key_package, count) {
+    const ptr0 = passStringToWasm0(key_package, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.frostCommit(ptr0, len0, count);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+}
+
+/**
+ * The group public key (hex) of a FROST key share.
+ * @param {string} key_package
+ * @returns {string}
+ */
+export function frostKeyPackageGroupKey(key_package) {
+    let deferred3_0;
+    let deferred3_1;
+    try {
+        const ptr0 = passStringToWasm0(key_package, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.frostKeyPackageGroupKey(ptr0, len0);
+        var ptr2 = ret[0];
+        var len2 = ret[1];
+        if (ret[3]) {
+            ptr2 = 0; len2 = 0;
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        deferred3_0 = ptr2;
+        deferred3_1 = len2;
+        return getStringFromWasm0(ptr2, len2);
+    } finally {
+        wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
+    }
+}
+
+/**
+ * Participant round 2: verifies the signing package against the expected
+ * sighash, randomizers and own commitments, then returns the
+ * `Vec<SignatureShare>` JSON payload.
+ * @param {string} key_package
+ * @param {string} nonces
+ * @param {string} signing_package_args
+ * @param {string} expected_sighash
+ * @param {string[]} expected_randomizers
+ * @returns {string}
+ */
+export function frostSign(key_package, nonces, signing_package_args, expected_sighash, expected_randomizers) {
+    let deferred7_0;
+    let deferred7_1;
+    try {
+        const ptr0 = passStringToWasm0(key_package, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(nonces, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ptr2 = passStringToWasm0(signing_package_args, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len2 = WASM_VECTOR_LEN;
+        const ptr3 = passStringToWasm0(expected_sighash, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len3 = WASM_VECTOR_LEN;
+        const ptr4 = passArrayJsValueToWasm0(expected_randomizers, wasm.__wbindgen_malloc);
+        const len4 = WASM_VECTOR_LEN;
+        const ret = wasm.frostSign(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4);
+        var ptr6 = ret[0];
+        var len6 = ret[1];
+        if (ret[3]) {
+            ptr6 = 0; len6 = 0;
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        deferred7_0 = ptr6;
+        deferred7_1 = len6;
+        return getStringFromWasm0(ptr6, len6);
+    } finally {
+        wasm.__wbindgen_free(deferred7_0, deferred7_1, 1);
+    }
+}
+
+/**
+ * Hex 64-byte XEdDSA signature over the 16 raw bytes of a frostd `/challenge`
+ * UUID, as frostd `/login` expects.
+ * @param {Uint8Array} secret
+ * @param {string} challenge
+ * @returns {string}
+ */
+export function frostdSignChallenge(secret, challenge) {
+    let deferred4_0;
+    let deferred4_1;
+    try {
+        const ptr0 = passArray8ToWasm0(secret, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(challenge, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.frostdSignChallenge(ptr0, len0, ptr1, len1);
         var ptr3 = ret[0];
         var len3 = ret[1];
         if (ret[3]) {
@@ -257,6 +634,18 @@ export function deriveUnifiedAddress(ufvk_str, diversifier_index) {
     }
 }
 
+/**
+ * Current chain tip height from lightwalletd, without a wallet.
+ * @param {string} lightwalletd_url
+ * @returns {Promise<number>}
+ */
+export function getChainTip(lightwalletd_url) {
+    const ptr0 = passStringToWasm0(lightwalletd_url, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.getChainTip(ptr0, len0);
+    return ret;
+}
+
 export function init() {
     wasm.init();
 }
@@ -268,6 +657,219 @@ export function init() {
 export function initThreadPool(num_threads) {
     const ret = wasm.initThreadPool(num_threads);
     return ret;
+}
+
+/**
+ * Decrypts a message on the one-way Noise_K channel from `peerPublic` to us.
+ * `state` is `null` if nothing has been received on that channel yet.
+ * @param {Uint8Array} secret
+ * @param {string} peer_public
+ * @param {string | null | undefined} state
+ * @param {Uint8Array} ciphertext
+ * @returns {NoiseDecryptResult}
+ */
+export function noiseDecrypt(secret, peer_public, state, ciphertext) {
+    const ptr0 = passArray8ToWasm0(secret, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(peer_public, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    var ptr2 = isLikeNone(state) ? 0 : passStringToWasm0(state, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    var len2 = WASM_VECTOR_LEN;
+    const ptr3 = passArray8ToWasm0(ciphertext, wasm.__wbindgen_malloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ret = wasm.noiseDecrypt(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+}
+
+/**
+ * Encrypts a message on the one-way Noise_K channel from us to `peerPublic`.
+ * `state` is `null` for the first message on that channel.
+ * @param {Uint8Array} secret
+ * @param {string} peer_public
+ * @param {string | null | undefined} state
+ * @param {Uint8Array} plaintext
+ * @returns {NoiseEncryptResult}
+ */
+export function noiseEncrypt(secret, peer_public, state, plaintext) {
+    const ptr0 = passArray8ToWasm0(secret, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(peer_public, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    var ptr2 = isLikeNone(state) ? 0 : passStringToWasm0(state, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    var len2 = WASM_VECTOR_LEN;
+    const ptr3 = passArray8ToWasm0(plaintext, wasm.__wbindgen_malloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ret = wasm.noiseEncrypt(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+}
+
+/**
+ * Applies aggregated spend authorization signatures (each verified against its
+ * action's `rk` and the transaction sighash).
+ * @param {Uint8Array} pczt
+ * @param {PcztSignature[]} signatures
+ * @returns {Uint8Array}
+ */
+export function pcztApplySignatures(pczt, signatures) {
+    const ptr0 = passArray8ToWasm0(pczt, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.pcztApplySignatures(ptr0, len0, signatures);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v2 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    return v2;
+}
+
+/**
+ * The proven PCZT minus what only the coordinator needs (see
+ * `pczt_ops::redact_for_signers`): this is the copy to upload.
+ * @param {Uint8Array} pczt
+ * @returns {Uint8Array}
+ */
+export function pcztRedactForSigners(pczt) {
+    const ptr0 = passArray8ToWasm0(pczt, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.pcztRedactForSigners(ptr0, len0);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v2 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    return v2;
+}
+
+/**
+ * Verified summary of what a PCZT does, for signers to review. Pass the
+ * treasury UFVK to make change detection cryptographic (recommended).
+ * @param {Uint8Array} pczt
+ * @param {string} network
+ * @param {string | null} [ufvk]
+ * @returns {PcztSummary}
+ */
+export function pcztSummary(pczt, network, ufvk) {
+    const ptr0 = passArray8ToWasm0(pczt, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(network, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    var ptr2 = isLikeNone(ufvk) ? 0 : passStringToWasm0(ufvk, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    var len2 = WASM_VECTOR_LEN;
+    const ret = wasm.pcztSummary(ptr0, len0, ptr1, len1, ptr2, len2);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+}
+
+/**
+ * Adds the missing Orchard/Ironwood proofs. Slow (the proving key is built on
+ * first use and cached); call from a worker after `initThreadPool`.
+ * @param {Uint8Array} pczt
+ * @returns {Uint8Array}
+ */
+export function provePczt(pczt) {
+    const ptr0 = passArray8ToWasm0(pczt, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.provePczt(ptr0, len0);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v2 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    return v2;
+}
+
+/**
+ * The last Rust panic on this thread. JS only sees a panic as an
+ * "unreachable" trap, so callers fetch the actual message here.
+ * @returns {string | undefined}
+ */
+export function takeLastPanic() {
+    const ret = wasm.takeLastPanic();
+    let v1;
+    if (ret[0] !== 0) {
+        v1 = getStringFromWasm0(ret[0], ret[1]);
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    }
+    return v1;
+}
+
+/**
+ * The address `pcztSummary` reports for this treasury's change outputs (Orchard
+ * and Ironwood pools alike): the UFVK's internal-scope Orchard address at index
+ * 0, as an Orchard-only unified address. Equals `treasuryViewingKey(...).changeAddress`.
+ * @param {string} ufvk
+ * @param {string} network
+ * @returns {string}
+ */
+export function treasuryChangeAddress(ufvk, network) {
+    let deferred4_0;
+    let deferred4_1;
+    try {
+        const ptr0 = passStringToWasm0(ufvk, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(network, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.treasuryChangeAddress(ptr0, len0, ptr1, len1);
+        var ptr3 = ret[0];
+        var len3 = ret[1];
+        if (ret[3]) {
+            ptr3 = 0; len3 = 0;
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        deferred4_0 = ptr3;
+        deferred4_1 = len3;
+        return getStringFromWasm0(ptr3, len3);
+    } finally {
+        wasm.__wbindgen_free(deferred4_0, deferred4_1, 1);
+    }
+}
+
+/**
+ * Orchard-only UFVK (with `ak` = the FROST group key) and its default
+ * Orchard-only unified address. Randomized: call once per treasury and store
+ * the result.
+ * @param {string} group_public_key
+ * @param {string} network
+ * @returns {TreasuryViewingKey}
+ */
+export function treasuryViewingKey(group_public_key, network) {
+    const ptr0 = passStringToWasm0(group_public_key, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(network, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.treasuryViewingKey(ptr0, len0, ptr1, len1);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+}
+
+/**
+ * The group key a treasury viewing key belongs to and the addresses it derives,
+ * for a signer to compare with their own key share and the published
+ * addresses before trusting it.
+ * @param {string} ufvk
+ * @param {string} network
+ * @returns {TreasuryViewingKeyInfo}
+ */
+export function treasuryViewingKeyInfo(ufvk, network) {
+    const ptr0 = passStringToWasm0(ufvk, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(network, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.treasuryViewingKeyInfo(ptr0, len0, ptr1, len1);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
 }
 
 export class wbg_rayon_PoolBuilder {
@@ -320,12 +922,32 @@ function __wbg_get_imports(memory) {
             const ret = Error(getStringFromWasm0(arg0, arg1));
             return ret;
         },
+        __wbg_Number_14af1003b8dd5ead: function(arg0) {
+            const ret = Number(arg0);
+            return ret;
+        },
         __wbg_String_8564e559799eccda: function(arg0, arg1) {
             const ret = String(arg1);
             const ptr1 = passStringToWasm0(ret, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
             const len1 = WASM_VECTOR_LEN;
             getDataViewMemory0().setInt32(arg0 + 4 * 1, len1, true);
             getDataViewMemory0().setInt32(arg0 + 4 * 0, ptr1, true);
+        },
+        __wbg___wbindgen_boolean_get_5b446f51afd21013: function(arg0) {
+            const v = arg0;
+            const ret = typeof(v) === 'boolean' ? v : undefined;
+            return isLikeNone(ret) ? 0xFFFFFF : ret ? 1 : 0;
+        },
+        __wbg___wbindgen_debug_string_4687d8d8c2017d52: function(arg0, arg1) {
+            const ret = debugString(arg1);
+            const ptr1 = passStringToWasm0(ret, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+            const len1 = WASM_VECTOR_LEN;
+            getDataViewMemory0().setInt32(arg0 + 4 * 1, len1, true);
+            getDataViewMemory0().setInt32(arg0 + 4 * 0, ptr1, true);
+        },
+        __wbg___wbindgen_in_92f62ee1427d9e49: function(arg0, arg1) {
+            const ret = arg0 in arg1;
+            return ret;
         },
         __wbg___wbindgen_is_function_1f9d30630b8b1d3d: function(arg0) {
             const ret = typeof(arg0) === 'function';
@@ -336,8 +958,16 @@ function __wbg_get_imports(memory) {
             const ret = typeof(val) === 'object' && val !== null;
             return ret;
         },
+        __wbg___wbindgen_is_string_90b56bc79aad6f6c: function(arg0) {
+            const ret = typeof(arg0) === 'string';
+            return ret;
+        },
         __wbg___wbindgen_is_undefined_8865fb403f8fe9d8: function(arg0) {
             const ret = arg0 === undefined;
+            return ret;
+        },
+        __wbg___wbindgen_jsval_loose_eq_677f21e468d6b461: function(arg0, arg1) {
+            const ret = arg0 == arg1;
             return ret;
         },
         __wbg___wbindgen_memory_caa4a6165639c8b5: function() {
@@ -347,6 +977,12 @@ function __wbg_get_imports(memory) {
         __wbg___wbindgen_module_7115fb14045f9891: function() {
             const ret = wasmModule;
             return ret;
+        },
+        __wbg___wbindgen_number_get_2e0e7dee9f701a71: function(arg0, arg1) {
+            const obj = arg1;
+            const ret = typeof(obj) === 'number' ? obj : undefined;
+            getDataViewMemory0().setFloat64(arg0 + 8 * 1, isLikeNone(ret) ? 0 : ret, true);
+            getDataViewMemory0().setInt32(arg0 + 4 * 0, !isLikeNone(ret), true);
         },
         __wbg___wbindgen_rethrow_cb2e88c6b2a16733: function(arg0) {
             throw arg0;
@@ -432,6 +1068,10 @@ function __wbg_get_imports(memory) {
         __wbg_close_748f26698dabe269: function() { return handleError(function (arg0) {
             arg0.close();
         }, arguments); },
+        __wbg_crypto_38df2bab126b63dc: function(arg0) {
+            const ret = arg0.crypto;
+            return ret;
+        },
         __wbg_data_1eb88471f3ec41b4: function(arg0) {
             const ret = arg0.data;
             return ret;
@@ -462,10 +1102,17 @@ function __wbg_get_imports(memory) {
             const ret = arg0.fetch(arg1, arg2);
             return ret;
         },
+        __wbg_getRandomValues_c44a50d8cfdaebeb: function() { return handleError(function (arg0, arg1) {
+            arg0.getRandomValues(arg1);
+        }, arguments); },
         __wbg_getReader_bf34f92ee19c42b4: function() { return handleError(function (arg0) {
             const ret = arg0.getReader();
             return ret;
         }, arguments); },
+        __wbg_getTime_f5a55efff2585d5d: function(arg0) {
+            const ret = arg0.getTime();
+            return ret;
+        },
         __wbg_get_658f6698067d9515: function() { return handleError(function (arg0, arg1) {
             const ret = Reflect.get(arg0, arg1);
             return ret;
@@ -478,8 +1125,16 @@ function __wbg_get_imports(memory) {
             const ret = arg0.done;
             return isLikeNone(ret) ? 0xFFFFFF : ret ? 1 : 0;
         },
+        __wbg_get_unchecked_288889d017702237: function(arg0, arg1) {
+            const ret = arg0[arg1 >>> 0];
+            return ret;
+        },
         __wbg_get_value_87fbd6ad1283f2e7: function(arg0) {
             const ret = arg0.value;
+            return ret;
+        },
+        __wbg_get_with_ref_key_6412cf3094599694: function(arg0, arg1) {
+            const ret = arg0[arg1];
             return ret;
         },
         __wbg_has_5d6706e5209576c1: function() { return handleError(function (arg0, arg1) {
@@ -488,6 +1143,26 @@ function __wbg_get_imports(memory) {
         }, arguments); },
         __wbg_headers_eba93595f8944c2f: function(arg0) {
             const ret = arg0.headers;
+            return ret;
+        },
+        __wbg_instanceof_ArrayBuffer_a99f175873e5d9b8: function(arg0) {
+            let result;
+            try {
+                result = arg0 instanceof ArrayBuffer;
+            } catch (_) {
+                result = false;
+            }
+            const ret = result;
+            return ret;
+        },
+        __wbg_instanceof_Uint8Array_828cef2aaacafc31: function(arg0) {
+            let result;
+            try {
+                result = arg0 instanceof Uint8Array;
+            } catch (_) {
+                result = false;
+            }
+            const ret = result;
             return ret;
         },
         __wbg_instanceof_Window_82d71df4eddf88bc: function(arg0) {
@@ -500,6 +1175,14 @@ function __wbg_get_imports(memory) {
             const ret = result;
             return ret;
         },
+        __wbg_isArray_e15a2ff68ffdbef2: function(arg0) {
+            const ret = Array.isArray(arg0);
+            return ret;
+        },
+        __wbg_isSafeInteger_717808ad6a54bd9e: function(arg0) {
+            const ret = Number.isSafeInteger(arg0);
+            return ret;
+        },
         __wbg_iterator_e3c31c892080e444: function() {
             const ret = Symbol.iterator;
             return ret;
@@ -508,8 +1191,20 @@ function __wbg_get_imports(memory) {
             const ret = arg0.length;
             return ret;
         },
+        __wbg_length_d4bdea10311bd9cf: function(arg0) {
+            const ret = arg0.length;
+            return ret;
+        },
         __wbg_log_17c30ef363c61cf4: function(arg0) {
             console.log(arg0);
+        },
+        __wbg_msCrypto_bd5a034af96bcba6: function(arg0) {
+            const ret = arg0.msCrypto;
+            return ret;
+        },
+        __wbg_new_0_72d020f0c63443d4: function() {
+            const ret = new Date();
+            return ret;
         },
         __wbg_new_1dbf7428bba60a42: function(arg0) {
             const ret = new Uint8Array(arg0);
@@ -587,6 +1282,10 @@ function __wbg_get_imports(memory) {
             const ret = new Uint8Array(arg0, arg1 >>> 0, arg2 >>> 0);
             return ret;
         },
+        __wbg_new_with_length_3da0ad195f6f63ba: function(arg0) {
+            const ret = new Uint8Array(arg0 >>> 0);
+            return ret;
+        },
         __wbg_new_with_str_and_init_4618dee4e950224f: function() { return handleError(function (arg0, arg1, arg2) {
             const ret = new Request(getStringFromWasm0(arg0, arg1), arg2);
             return ret;
@@ -603,6 +1302,10 @@ function __wbg_get_imports(memory) {
             const ret = arg0.next();
             return ret;
         }, arguments); },
+        __wbg_node_84ea875411254db1: function(arg0) {
+            const ret = arg0.node;
+            return ret;
+        },
         __wbg_now_aa4ccb83129e9e55: function() {
             const ret = Date.now();
             return ret;
@@ -614,8 +1317,16 @@ function __wbg_get_imports(memory) {
         __wbg_postMessage_46095c3ed2a3651d: function() { return handleError(function (arg0, arg1) {
             arg0.postMessage(arg1);
         }, arguments); },
+        __wbg_process_44c7a14e11e9f69e: function(arg0) {
+            const ret = arg0.process;
+            return ret;
+        },
         __wbg_prototypesetcall_bc27214492979395: function(arg0, arg1, arg2) {
             Uint8Array.prototype.set.call(getArrayU8FromWasm0(arg0, arg1), arg2);
+        },
+        __wbg_push_2baf45db356cf468: function(arg0, arg1) {
+            const ret = arg0.push(arg1);
+            return ret;
         },
         __wbg_queueMicrotask_9833f9a49df95a49: function(arg0) {
             const ret = arg0.queueMicrotask;
@@ -624,6 +1335,9 @@ function __wbg_get_imports(memory) {
         __wbg_queueMicrotask_a72f977e97f23c5f: function(arg0) {
             queueMicrotask(arg0);
         },
+        __wbg_randomFillSync_6c25eac9869eb53c: function() { return handleError(function (arg0, arg1) {
+            arg0.randomFillSync(arg1);
+        }, arguments); },
         __wbg_read_2a943774344c9728: function(arg0) {
             const ret = arg0.read();
             return ret;
@@ -631,6 +1345,10 @@ function __wbg_get_imports(memory) {
         __wbg_releaseLock_eb64cd83aa9fcfe4: function(arg0) {
             arg0.releaseLock();
         },
+        __wbg_require_b4edbdcf3e2a1ef0: function() { return handleError(function () {
+            const ret = module.require;
+            return ret;
+        }, arguments); },
         __wbg_resolve_0076e10020304ede: function(arg0) {
             const ret = Promise.resolve(arg0);
             return ret;
@@ -642,6 +1360,10 @@ function __wbg_get_imports(memory) {
             const ret = setTimeout(arg0, arg1);
             return ret;
         },
+        __wbg_set_145a351398b48c65: function() { return handleError(function (arg0, arg1, arg2) {
+            const ret = Reflect.set(arg0, arg1, arg2);
+            return ret;
+        }, arguments); },
         __wbg_set_575d3ddb70fe831d: function(arg0, arg1, arg2) {
             arg0.set(getArrayU8FromWasm0(arg1, arg2));
         },
@@ -725,6 +1447,10 @@ function __wbg_get_imports(memory) {
             const ret = arg0.status;
             return ret;
         },
+        __wbg_subarray_002b94d5e13d1411: function(arg0, arg1, arg2) {
+            const ret = arg0.subarray(arg1 >>> 0, arg2 >>> 0);
+            return ret;
+        },
         __wbg_then_c8a35d4ad59c6b8e: function(arg0, arg1) {
             const ret = arg0.then(arg1);
             return ret;
@@ -749,6 +1475,10 @@ function __wbg_get_imports(memory) {
             const ret = arg0.value;
             return ret;
         },
+        __wbg_versions_276b2795b1c6a219: function(arg0) {
+            const ret = arg0.versions;
+            return ret;
+        },
         __wbg_view_9c570f33e8d6ab96: function(arg0) {
             const ret = arg0.view;
             return isLikeNone(ret) ? 0 : addToExternrefTable0(ret);
@@ -766,22 +1496,22 @@ function __wbg_get_imports(memory) {
             return ret;
         },
         __wbindgen_generic_0000000000000001: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 669, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
-            const ret = makeMutClosure(arg0, arg1, wasm_bindgen_9387dbcee5e27194___convert__closures_____invoke___wasm_bindgen_9387dbcee5e27194___JsValue______true_);
-            return ret;
-        },
-        __wbindgen_generic_0000000000000002: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 766, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
+            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 2168, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
             const ret = makeMutClosure(arg0, arg1, wasm_bindgen_9387dbcee5e27194___convert__closures_____invoke___wasm_bindgen_9387dbcee5e27194___JsValue__core_f576a7f0a61931f7___result__Result_____wasm_bindgen_9387dbcee5e27194___JsError___true_);
             return ret;
         },
-        __wbindgen_generic_0000000000000003: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 768, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+        __wbindgen_generic_0000000000000002: function(arg0, arg1) {
+            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 2170, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
             const ret = makeMutClosure(arg0, arg1, wasm_bindgen_9387dbcee5e27194___convert__closures_____invoke___js_sys_4497dad8fdab7ec5___futures__task__wait_async_polyfill__MessageEvent______true_);
             return ret;
         },
+        __wbindgen_generic_0000000000000003: function(arg0, arg1) {
+            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 598, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+            const ret = makeMutClosure(arg0, arg1, wasm_bindgen_9387dbcee5e27194___convert__closures_____invoke___wasm_bindgen_9387dbcee5e27194___JsValue______true_);
+            return ret;
+        },
         __wbindgen_generic_0000000000000004: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [], shim_idx: 564, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [], shim_idx: 567, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
             const ret = makeMutClosure(arg0, arg1, wasm_bindgen_9387dbcee5e27194___convert__closures_____invoke_______true_);
             return ret;
         },
@@ -791,13 +1521,25 @@ function __wbg_get_imports(memory) {
             return ret;
         },
         __wbindgen_generic_0000000000000006: function(arg0, arg1) {
+            // Cast intrinsic for `Ref(Slice(U8)) -> NamedExternref("Uint8Array")`.
+            const ret = getArrayU8FromWasm0(arg0, arg1);
+            return ret;
+        },
+        __wbindgen_generic_0000000000000007: function(arg0, arg1) {
             // Cast intrinsic for `Ref(String) -> Externref`.
             const ret = getStringFromWasm0(arg0, arg1);
             return ret;
         },
-        __wbindgen_generic_0000000000000007: function(arg0) {
+        __wbindgen_generic_0000000000000008: function(arg0) {
             // Cast intrinsic for `U64 -> Externref`.
             const ret = BigInt.asUintN(64, arg0);
+            return ret;
+        },
+        __wbindgen_generic_0000000000000009: function(arg0, arg1) {
+            var v0 = getArrayU8FromWasm0(arg0, arg1).slice();
+            wasm.__wbindgen_free(arg0, arg1 * 1, 1);
+            // Cast intrinsic for `Vector(U8) -> Externref`.
+            const ret = v0;
             return ret;
         },
         __wbindgen_init_externref_table: function() {
@@ -823,7 +1565,7 @@ function __wbg_get_imports(memory) {
             getDataViewMemory0().setInt32(arg0 + 4 * 1, len1, true);
             getDataViewMemory0().setInt32(arg0 + 4 * 0, ptr1, true);
         },
-        memory: memory || new WebAssembly.Memory({initial:20,maximum:16384,shared:true}),
+        memory: memory || new WebAssembly.Memory({initial:42,maximum:16384,shared:true}),
     };
     return {
         __proto__: null,
@@ -835,12 +1577,12 @@ function wasm_bindgen_9387dbcee5e27194___convert__closures_____invoke_______true
     wasm.wasm_bindgen_9387dbcee5e27194___convert__closures_____invoke_______true_(arg0, arg1);
 }
 
-function wasm_bindgen_9387dbcee5e27194___convert__closures_____invoke___wasm_bindgen_9387dbcee5e27194___JsValue______true_(arg0, arg1, arg2) {
-    wasm.wasm_bindgen_9387dbcee5e27194___convert__closures_____invoke___wasm_bindgen_9387dbcee5e27194___JsValue______true_(arg0, arg1, arg2);
-}
-
 function wasm_bindgen_9387dbcee5e27194___convert__closures_____invoke___js_sys_4497dad8fdab7ec5___futures__task__wait_async_polyfill__MessageEvent______true_(arg0, arg1, arg2) {
     wasm.wasm_bindgen_9387dbcee5e27194___convert__closures_____invoke___js_sys_4497dad8fdab7ec5___futures__task__wait_async_polyfill__MessageEvent______true_(arg0, arg1, arg2);
+}
+
+function wasm_bindgen_9387dbcee5e27194___convert__closures_____invoke___wasm_bindgen_9387dbcee5e27194___JsValue______true_(arg0, arg1, arg2) {
+    wasm.wasm_bindgen_9387dbcee5e27194___convert__closures_____invoke___wasm_bindgen_9387dbcee5e27194___JsValue______true_(arg0, arg1, arg2);
 }
 
 function wasm_bindgen_9387dbcee5e27194___convert__closures_____invoke___wasm_bindgen_9387dbcee5e27194___JsValue__core_f576a7f0a61931f7___result__Result_____wasm_bindgen_9387dbcee5e27194___JsError___true_(arg0, arg1, arg2) {
@@ -871,6 +1613,9 @@ const __wbindgen_enum_RequestMode = ["same-origin", "no-cors", "cors", "navigate
 
 
 const __wbindgen_enum_RequestRedirect = ["follow", "error", "manual"];
+const FrostDkgFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_frostdkg_free(ptr, 1));
 const IntoUnderlyingByteSourceFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_intounderlyingbytesource_free(ptr, 1));
@@ -896,6 +1641,82 @@ function addToExternrefTable0(obj) {
 const CLOSURE_DTORS = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(state => wasm.__wbindgen_destroy_closure(state.a, state.b));
+
+function debugString(val) {
+    // primitive types
+    const type = typeof val;
+    if (type == 'number' || type == 'boolean' || val == null) {
+        return  `${val}`;
+    }
+    if (type == 'string') {
+        return `"${val}"`;
+    }
+    if (type == 'symbol') {
+        const description = val.description;
+        if (description == null) {
+            return 'Symbol';
+        } else {
+            return `Symbol(${description})`;
+        }
+    }
+    if (type == 'function') {
+        const name = val.name;
+        if (typeof name == 'string' && name.length > 0) {
+            return `Function(${name})`;
+        } else {
+            return 'Function';
+        }
+    }
+    // objects
+    if (Array.isArray(val)) {
+        const length = val.length;
+        let debug = '[';
+        if (length > 0) {
+            debug += debugString(val[0]);
+        }
+        for(let i = 1; i < length; i++) {
+            debug += ', ' + debugString(val[i]);
+        }
+        debug += ']';
+        return debug;
+    }
+    // Test for built-in
+    const builtInMatches = /\[object ([^\]]+)\]/.exec(toString.call(val));
+    let className;
+    if (builtInMatches && builtInMatches.length > 1) {
+        className = builtInMatches[1];
+    } else {
+        // Failed to match the standard '[object ClassName]'
+        return toString.call(val);
+    }
+    if (className == 'Object') {
+        // we're a user defined class or Object
+        // JSON.stringify avoids problems with cycles, and is generally much
+        // easier than looping through ownProperties of `val`.
+        try {
+            return 'Object(' + JSON.stringify(val) + ')';
+        } catch (_) {
+            return 'Object';
+        }
+    }
+    // errors
+    if (val instanceof Error) {
+        return `${val.name}: ${val.message}\n${val.stack}`;
+    }
+    // TODO we could test for more things here, like `Set`s and `Map`s.
+    return className;
+}
+
+function getArrayJsValueFromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    const mem = getDataViewMemory0();
+    const result = [];
+    for (let i = ptr; i < ptr + 4 * len; i += 4) {
+        result.push(wasm.__wbindgen_externrefs.get(mem.getUint32(i, true)));
+    }
+    wasm.__externref_drop_slice(ptr, len);
+    return result;
+}
 
 function getArrayU8FromWasm0(ptr, len) {
     ptr = ptr >>> 0;
@@ -967,6 +1788,16 @@ function passArray8ToWasm0(arg, malloc) {
     const ptr = malloc(arg.length * 1, 1) >>> 0;
     getUint8ArrayMemory0().set(arg, ptr / 1);
     WASM_VECTOR_LEN = arg.length;
+    return ptr;
+}
+
+function passArrayJsValueToWasm0(array, malloc) {
+    const ptr = malloc(array.length * 4, 4) >>> 0;
+    for (let i = 0; i < array.length; i++) {
+        const add = addToExternrefTable0(array[i]);
+        getDataViewMemory0().setUint32(ptr + 4 * i, add, true);
+    }
+    WASM_VECTOR_LEN = array.length;
     return ptr;
 }
 

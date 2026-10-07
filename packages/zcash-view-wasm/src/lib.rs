@@ -5,7 +5,18 @@
 //! account's Orchard viewing key; after activation no value can enter Orchard,
 //! so payments to a UA's Orchard receiver arrive as Ironwood notes.
 
+mod bindings;
+mod frost;
+mod noise;
+mod pczt_ops;
+mod treasury;
 mod types;
+mod util;
+mod wallet_ops;
+#[cfg(test)]
+mod treasury_tests;
+
+pub use bindings::*;
 
 use std::cell::UnsafeCell;
 use std::collections::BTreeMap;
@@ -34,14 +45,15 @@ use zcash_keys::keys::{
     UnifiedAddressRequest, UnifiedFullViewingKey,
 };
 use zcash_primitives::merkle_tree::HashSer;
-use zcash_protocol::consensus::{self, BlockHeight, MainNetwork, MAIN_NETWORK};
+use zcash_protocol::consensus::{self, BlockHeight, Network};
 use zip32::DiversifierIndex;
 
 use sapling_crypto;
 
 use types::{BalanceInfo, SyncSummary};
+use util::{network_name, parse_network};
 
-const MAX_CHECKPOINTS: usize = 100;
+pub(crate) const MAX_CHECKPOINTS: usize = 100;
 // Blocks are scanned one at a time because crossbeam_channel in BatchRunner
 // deadlocks on WASM without SharedArrayBuffer. We download in larger chunks
 // to reduce gRPC round-trips, then scan each block individually.
@@ -65,9 +77,23 @@ macro_rules! console_log {
 }
 
 
+thread_local! {
+    static LAST_PANIC: std::cell::RefCell<Option<String>> = const { std::cell::RefCell::new(None) };
+}
+
 #[wasm_bindgen(start)]
 pub fn init() {
-    console_error_panic_hook::set_once();
+    std::panic::set_hook(Box::new(|info| {
+        LAST_PANIC.with(|last| *last.borrow_mut() = Some(info.to_string()));
+        console_error_panic_hook::hook(info);
+    }));
+}
+
+/// The last Rust panic on this thread. JS only sees a panic as an
+/// "unreachable" trap, so callers fetch the actual message here.
+#[wasm_bindgen(js_name = "takeLastPanic")]
+pub fn take_last_panic() -> Option<String> {
+    LAST_PANIC.with(|last| last.borrow_mut().take())
 }
 
 /// Block cache using UnsafeCell for lock-free access in single-threaded WASM.
@@ -169,7 +195,8 @@ impl BlockCache for SimpleBlockCache {
 
 #[wasm_bindgen]
 pub struct ZcashViewWallet {
-    db: MemoryWalletDb<MainNetwork>,
+    db: MemoryWalletDb<Network>,
+    network: Network,
     cache: SimpleBlockCache,
     client: CompactTxStreamerClient<WebClient>,
     lightwalletd_url: String,
@@ -183,20 +210,21 @@ impl ZcashViewWallet {
     pub async fn create(
         lightwalletd_url: &str,
         ufvk_str: &str,
-        birthday_height: u64,
+        birthday_height: u32,
+        network: &str,
     ) -> Result<ZcashViewWallet, JsError> {
         console_log!("[zcash-wallet] Initializing new wallet...");
 
-        let params = MAIN_NETWORK;
+        let params = parse_network(network)?;
         let mut db = MemoryWalletDb::new(params, MAX_CHECKPOINTS);
         let cache = SimpleBlockCache::new();
         let web_client = WebClient::new(lightwalletd_url.to_string());
         let mut client = CompactTxStreamerClient::new(web_client);
 
-        let ufvk = UnifiedFullViewingKey::decode(&params, ufvk_str)
+        let ufvk = UnifiedFullViewingKey::decode(&params, ufvk_str.trim())
             .map_err(|e| JsError::new(&format!("Invalid UFVK: {}", e)))?;
 
-        let birthday_height = consensus::BlockHeight::from_u32(birthday_height as u32);
+        let birthday_height = consensus::BlockHeight::from_u32(birthday_height);
         let tree_state = client
             .get_tree_state(BlockId { height: u64::from(birthday_height), hash: vec![] })
             .await
@@ -214,6 +242,7 @@ impl ZcashViewWallet {
         console_log!("[zcash-wallet] View-only account imported");
         Ok(ZcashViewWallet {
             db,
+            network: params,
             cache,
             client,
             lightwalletd_url: lightwalletd_url.to_string(),
@@ -221,19 +250,26 @@ impl ZcashViewWallet {
         })
     }
 
+    /// Restores a wallet saved with `toBytes`. The saved state records its
+    /// network, which must match `network`; states saved before the network was
+    /// recorded are mainnet wallets.
     #[wasm_bindgen(js_name = "fromBytes")]
     pub async fn from_bytes(
         lightwalletd_url: &str,
         saved_state: &[u8],
+        network: &str,
     ) -> Result<ZcashViewWallet, JsError> {
         console_log!("[zcash-wallet] Restoring wallet from {} bytes", saved_state.len());
-        let db = MemoryWalletDb::decode_new(saved_state, MAIN_NETWORK, MAX_CHECKPOINTS)
+        let network = parse_network(network)?;
+        let proto_bytes = decode_saved_state(saved_state, network)?;
+        let db = MemoryWalletDb::decode_new(proto_bytes, network, MAX_CHECKPOINTS)
             .map_err(|e| JsError::new(&format!("Failed to decode wallet: {:?}", e)))?;
         let cache = SimpleBlockCache::new();
         let client = CompactTxStreamerClient::new(WebClient::new(lightwalletd_url.to_string()));
         console_log!("[zcash-wallet] Wallet restored");
         Ok(ZcashViewWallet {
             db,
+            network,
             cache,
             client,
             lightwalletd_url: lightwalletd_url.to_string(),
@@ -388,30 +424,141 @@ impl ZcashViewWallet {
         Ok(serde_wasm_bindgen::to_value(&txs)?)
     }
 
+    /// Serializes the wallet, prefixed with a header recording its network.
     #[wasm_bindgen(js_name = "toBytes")]
     pub fn to_bytes(&self) -> Result<Vec<u8>, JsError> {
-        let mut buf = Vec::new();
+        let mut buf = saved_state_header(self.network).to_vec();
         self.db.encode(&mut buf)
             .map_err(|e| JsError::new(&format!("Failed to encode wallet: {:?}", e)))?;
         Ok(buf)
     }
+
+    /// Builds an unproven, unsigned PCZT paying a ZIP 321 request
+    /// (`zcash:?address=..&amount=..&memo=..&address.1=..`) from this wallet's
+    /// account, expiring `expiryDelta` blocks after its target height. The wallet
+    /// must be synced. Sapling-only and TEX recipients are rejected.
+    #[wasm_bindgen(js_name = "createPczt")]
+    pub async fn create_pczt(
+        &mut self,
+        payment_request_uri: String,
+        expiry_delta: u32,
+    ) -> Result<Vec<u8>, JsError> {
+        let pczt = wallet_ops::create_pczt(&mut self.db, self.network, &payment_request_uri, expiry_delta)?;
+        Ok(pczt_ops::serialize_pczt(pczt)?)
+    }
+
+    /// Extracts the transaction from a proven, fully signed PCZT and records it
+    /// in the wallet (so balances and sent transactions update), without
+    /// sending it. Returns `{ txid, raw }`: the txid (hex, display order) and
+    /// the serialized transaction, which the caller broadcasts.
+    #[wasm_bindgen(js_name = "extractTransaction")]
+    pub fn extract_transaction(&mut self, pczt: Vec<u8>) -> Result<JsValue, JsError> {
+        let pczt = pczt_ops::parse_pczt(&pczt)?;
+        let (txid, tx) = wallet_ops::extract_and_store(&mut self.db, pczt)?;
+        let mut raw = Vec::new();
+        tx.write(&mut raw)
+            .map_err(|e| JsError::new(&format!("Failed to serialize transaction: {e}")))?;
+        console_log!("[zcash-wallet] Extracted transaction {} ({} bytes)", txid, raw.len());
+
+        let out = js_sys::Object::new();
+        let set = |key: &str, value: JsValue| {
+            js_sys::Reflect::set(&out, &JsValue::from_str(key), &value)
+                .map(|_| ())
+                .map_err(|_| JsError::new("Failed to build the extracted transaction"))
+        };
+        set("txid", JsValue::from_str(&txid.to_string()))?;
+        set("raw", js_sys::Uint8Array::from(&raw[..]).into())?;
+        Ok(out.into())
+    }
+}
+
+/// Saved-state header: a 0x00 byte (never the first byte of a protobuf message,
+/// whose field numbers start at 1), "ZVW", a format version and the network.
+const SAVED_STATE_MAGIC: [u8; 4] = [0x00, b'Z', b'V', b'W'];
+const SAVED_STATE_VERSION: u8 = 1;
+
+fn saved_state_header(network: Network) -> [u8; 6] {
+    let net = match network {
+        Network::MainNetwork => 0,
+        Network::TestNetwork => 1,
+    };
+    let [a, b, c, d] = SAVED_STATE_MAGIC;
+    [a, b, c, d, SAVED_STATE_VERSION, net]
+}
+
+/// Validates the saved-state header against `network` and returns the encoded
+/// memory wallet that follows it.
+fn decode_saved_state(bytes: &[u8], network: Network) -> Result<&[u8], util::Error> {
+    if let Some(rest) = bytes.strip_prefix(&SAVED_STATE_MAGIC[..]) {
+        let (&[version, net], body) = rest
+            .split_first_chunk::<2>()
+            .ok_or_else(|| util::Error::new("Saved wallet state is truncated"))?;
+        if version != SAVED_STATE_VERSION {
+            return Err(util::Error::new(format!("Unsupported saved wallet version {version}")));
+        }
+        let saved = match net {
+            0 => Network::MainNetwork,
+            1 => Network::TestNetwork,
+            other => return Err(util::Error::new(format!("Saved wallet has unknown network {other}"))),
+        };
+        if saved != network {
+            return Err(util::Error::new(format!(
+                "Saved wallet is for the {} network, but {} was requested",
+                network_name(saved),
+                network_name(network)
+            )));
+        }
+        Ok(body)
+    } else if network == Network::MainNetwork {
+        // Saved before the network was recorded; those wallets were mainnet-only.
+        Ok(bytes)
+    } else {
+        Err(util::Error::new(
+            "Saved wallet state predates network tagging and is a mainnet wallet",
+        ))
+    }
+}
+
+/// Current chain tip height from lightwalletd, without a wallet.
+#[wasm_bindgen(js_name = "getChainTip")]
+pub async fn get_chain_tip_height(lightwalletd_url: String) -> Result<u32, JsError> {
+    let mut client = CompactTxStreamerClient::new(WebClient::new(lightwalletd_url));
+    let tip = client
+        .get_latest_block(ChainSpec {})
+        .await
+        .map_err(|e| JsError::new(&format!("Failed to get chain tip: {}", e)))?
+        .into_inner()
+        .height;
+    u32::try_from(tip).map_err(|_| JsError::new("Chain tip height out of range"))
 }
 
 /// Derive a shielded unified address for a UFVK, starting the search at the given
 /// 11-byte diversifier index (or index 0 for the default address). Transparent
 /// receivers are omitted because the view wallet only scans Sapling and Orchard.
 /// Notes sent to any diversified address are detected by the same viewing key.
+///
+/// `network` is "main" (default) or "test".
 #[wasm_bindgen(js_name = "deriveUnifiedAddress")]
 pub fn derive_unified_address(
     ufvk_str: &str,
+    network: Option<String>,
     diversifier_index: Option<Vec<u8>>,
 ) -> Result<String, JsError> {
-    let ufvk = UnifiedFullViewingKey::decode(&MAIN_NETWORK, ufvk_str.trim())
-        .map_err(|e| JsError::new(&format!("Invalid UFVK: {}", e)))?;
+    let network = parse_network(network.as_deref().unwrap_or("main"))?;
+    Ok(derive_unified_address_for(ufvk_str, network, diversifier_index)?)
+}
+
+pub(crate) fn derive_unified_address_for(
+    ufvk_str: &str,
+    network: Network,
+    diversifier_index: Option<Vec<u8>>,
+) -> Result<String, util::Error> {
+    let ufvk = UnifiedFullViewingKey::decode(&network, ufvk_str.trim())
+        .map_err(|e| util::Error::new(format!("Invalid UFVK: {}", e)))?;
     let uivk = ufvk.to_unified_incoming_viewing_key();
     // NEAR Intents only accepts recipients with an Orchard receiver
     if !uivk.has_orchard() {
-        return Err(JsError::new(
+        return Err(util::Error::new(
             "Viewing key has no Orchard component. Export a current unified full viewing key from your wallet.",
         ));
     }
@@ -419,18 +566,18 @@ pub fn derive_unified_address(
     // invalid for Sapling instead of silently dropping that receiver
     let sapling = if uivk.has_sapling() { Require } else { Omit };
     let request = UnifiedAddressRequest::custom(Require, sapling, Omit)
-        .map_err(|_| JsError::new("Invalid address request"))?;
+        .map_err(|_| util::Error::new("Invalid address request"))?;
     let start = match diversifier_index {
         Some(bytes) => DiversifierIndex::from(
             <[u8; 11]>::try_from(bytes.as_slice())
-                .map_err(|_| JsError::new("Diversifier index must be 11 bytes"))?,
+                .map_err(|_| util::Error::new("Diversifier index must be 11 bytes"))?,
         ),
         None => DiversifierIndex::new(),
     };
     let (ua, _) = uivk
         .find_address(start, request)
-        .map_err(|e| JsError::new(&format!("Failed to derive address: {:?}", e)))?;
-    Ok(ua.encode(&MAIN_NETWORK))
+        .map_err(|e| util::Error::new(format!("Failed to derive address: {:?}", e)))?;
+    Ok(ua.encode(&network))
 }
 
 /// Drops nullifier-map and tx-locator entries below `height`, returning how many
@@ -525,8 +672,12 @@ fn sent_transactions_from_proto(
             .copied()
             .unwrap_or((None, 0));
 
+        // Display (block explorer) byte order, as `TxId`'s Display impl
+        let txid = <[u8; 32]>::try_from(txid_bytes.as_slice())
+            .map(|b| zcash_protocol::TxId::from_bytes(b).to_string())
+            .unwrap_or_else(|_| hex::encode(txid_bytes));
         txs.push(types::SentTransaction {
-            txid: hex::encode(txid_bytes),
+            txid,
             amount_zec: types::u_zatoshis_to_zec(net_sent),
             memo: None, // Sender can't decrypt recipient's memo
             block_height: mined_height.map(|h| h as u64),
@@ -655,7 +806,7 @@ impl ZcashViewWallet {
 
         let scan_start = js_sys::Date::now();
         scan_cached_blocks(
-            &MAIN_NETWORK,
+            &self.network,
             &self.cache,
             &mut self.db,
             range_start,
@@ -756,7 +907,7 @@ impl ZcashViewWallet {
         let mut wallet_proto = self.to_proto()?;
         let pruned = prune_nullifier_map(&mut wallet_proto, below);
         if pruned > 0 {
-            self.db = MemoryWalletDb::new_from_proto(wallet_proto, MAIN_NETWORK, MAX_CHECKPOINTS)
+            self.db = MemoryWalletDb::new_from_proto(wallet_proto, self.network, MAX_CHECKPOINTS)
                 .map_err(|e| JsError::new(&format!("Failed to rebuild wallet: {e:?}")))?;
         }
         self.compacted_below = below;

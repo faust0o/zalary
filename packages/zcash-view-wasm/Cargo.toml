@@ -20,8 +20,10 @@ orchard = []
 zcash_client_backend = { version = "0.24.0", default-features = false, features = [
     "sync",
     "orchard",
+    # PCZT creation/extraction for FROST treasuries. Implies transparent-inputs.
+    "pczt",
 ] }
-zcash_keys = { version = "0.16.1", default-features = false, features = ["orchard"] }
+zcash_keys = { version = "0.16.1", default-features = false, features = ["orchard", "unstable-frost"] }
 zcash_primitives = { version = "0.30.1", default-features = false }
 zcash_protocol = { version = "0.10.6", default-features = false }
 zcash_address = { version = "0.13.0", default-features = false }
@@ -31,7 +33,40 @@ zip32 = { version = "0.2", default-features = false }
 # This pins the unmerged Ironwood parity PR (zcash/zcash_client_memory#17).
 # default-features = false drops `multicore` (rayon proving/subtree building),
 # matching the previous build.
-zcash_client_memory = { git = "https://github.com/zcashme/zcash_client_memory", rev = "37256ae6c775d2a5ab36da2e52b7ea568c966d52", default-features = false, features = ["orchard"] }
+zcash_client_memory = { git = "https://github.com/zcashme/zcash_client_memory", rev = "37256ae6c775d2a5ab36da2e52b7ea568c966d52", default-features = false, features = ["orchard", "transparent-inputs"] }
+
+# PCZT roles (prover, signer, extractor) for FROST treasury spends
+pczt = { version = "0.9.3", default-features = false, features = [
+    "orchard",
+    "sapling",
+    "transparent",
+    "prover",
+    "signer",
+    "spend-finalizer",
+    "tx-extractor",
+] }
+zip321 = "0.9.0"
+zcash_transparent = { version = "0.10.0", default-features = false }
+
+# FROST (rerandomized, RedPallas) for treasury DKG and signing, wire-compatible
+# with ZF frost-client / frostd
+reddsa = { version = "0.5.2", features = ["frost", "serde"] }
+frost-core = { version = "3.0.0", features = ["serde"] }
+frost-rerandomized = { version = "3.0.0", features = ["serde"] }
+serde_json = "1"
+serdect = { version = "0.2", features = ["alloc"] }
+uuid = "1"
+pasta_curves = "0.5"
+ff = "0.13"
+zcash_note_encryption = "0.4"
+rand_core = { version = "0.6", features = ["getrandom"] }
+zeroize = { version = "1", features = ["zeroize_derive"] }
+
+# frostd comms: Noise_K_25519_ChaChaPoly_BLAKE2s (as snow does it) and XEdDSA login
+x25519-dalek = { version = "2.0.1", features = ["static_secrets"] }
+chacha20poly1305 = "0.10.1"
+blake2 = "0.10.6"
+xeddsa = "1.0.2"
 
 # WASM + JS interop
 wasm-bindgen = "0.2"
@@ -61,16 +96,33 @@ wasm-bindgen-rayon = "1.2"
 # Sapling crypto (for Node type in subtree roots)
 sapling-crypto = { version = "0.7.0", default-features = false }
 
-# Orchard (for MerkleHashOrchard in Orchard and Ironwood subtree roots)
-orchard = { version = "0.15.5", default-features = false }
+# Orchard (for MerkleHashOrchard in Orchard and Ironwood subtree roots, and the
+# Action circuit for treasury spends). `multicore` runs halo2 proving on the
+# wasm-bindgen-rayon pool (about 4x faster in the browser); proving must then
+# happen in a worker after `initThreadPool`.
+orchard = { version = "0.15.5", default-features = false, features = ["circuit", "multicore", "unstable-frost"] }
 
 # Logging and error handling
 console_error_panic_hook = "0.1"
 
 # WASM compatibility
 getrandom = { version = "0.2", features = ["js"] }
+# zcash_client_backend stamps stored transactions with OffsetDateTime::now_utc(),
+# which panics in the browser unless time reads the clock through js-sys.
+time = { version = "0.3", features = ["wasm-bindgen"] }
+
+[dev-dependencies]
+# Reference Noise implementation used by frost-client, for interop tests only
+snow = "0.9.6"
+rand = "0.8"
+incrementalmerkletree = "0.8"
 
 [profile.release]
 opt-level = 3
 lto = true
 codegen-units = 1
+
+# Native `cargo test` builds dependencies optimized: Orchard proving key
+# generation and proving take minutes unoptimized.
+[profile.test.package."*"]
+opt-level = 3
