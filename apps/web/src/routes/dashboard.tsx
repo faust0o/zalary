@@ -5,6 +5,7 @@ import { DashboardView } from "../components/views/dashboard-view"
 import { WalkthroughCard } from "../components/walkthrough"
 import { useAccountData } from "../hooks/use-account-data"
 import { useTitle } from "../hooks/use-title"
+import { useWalkthrough } from "../hooks/use-walkthrough"
 import { useZecPrice } from "../hooks/use-zec-price"
 import { payrollsWithDetails, zecSpentByMonth } from "../lib/payroll-records"
 
@@ -15,6 +16,8 @@ export function DashboardPage() {
   const { price: zecPrice } = useZecPrice()
   const [disburseOpen, setDisburseOpen] = useState(false)
   const [disbursePayrollId, setDisbursePayrollId] = useState<string | null>(null)
+  // The layout's floating Walkthrough is always mounted and polls for us
+  const walkthrough = useWalkthrough()
 
   const detailed = useMemo(
     () => payrollsWithDetails(payrolls, employees, runs),
@@ -37,7 +40,14 @@ export function DashboardPage() {
           setDisburseOpen(true)
         }}
         onNavigate={(path) => navigate(path)}
-        tutorial={<WalkthroughCard />}
+        tutorial={
+          walkthrough?.onDashboard ? (
+            <WalkthroughCard
+              steps={walkthrough.steps}
+              completedCount={walkthrough.completedCount}
+            />
+          ) : undefined
+        }
       />
       <DisburseModal
         open={disburseOpen}
