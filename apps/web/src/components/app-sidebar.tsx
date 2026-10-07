@@ -57,7 +57,7 @@ export interface AppSidebarProps {
   hideSettings?: boolean
   /** Override the Top Up button action (defaults to the swap dialog) */
   onTopUp?: () => void
-  /** Set while the account has no treasury: replaces the balance with a prompt */
+  /** Set while the account has no treasury: turns Top Up into Create treasury */
   onCreateTreasury?: () => void
 }
 
@@ -159,15 +159,6 @@ export function AppSidebar({
                 <p className="truncate text-sm font-medium">
                   for @{owner.username}
                 </p>
-              ) : onCreateTreasury ? (
-                <button
-                  type="button"
-                  onClick={onCreateTreasury}
-                  className="flex cursor-pointer items-center gap-1.5 text-lg font-medium text-[var(--primary-dark)] hover:underline dark:text-primary"
-                >
-                  <Vault className="size-4" />
-                  Create treasury
-                </button>
               ) : (
                 <p className="text-xl font-medium">
                   {balance >= 1_000
@@ -216,11 +207,20 @@ export function AppSidebar({
             <Button
               className="w-full"
               onClick={
-                onTopUp ?? onCreateTreasury ?? (() => setTopUpOpen(true))
+                onCreateTreasury ?? onTopUp ?? (() => setTopUpOpen(true))
               }
             >
-              <Plus />
-              Top Up
+              {onCreateTreasury ? (
+                <>
+                  <Vault />
+                  Create treasury
+                </>
+              ) : (
+                <>
+                  <Plus />
+                  Top Up
+                </>
+              )}
             </Button>
             {!onTopUp && (
               <TopUpModal open={topUpOpen} onOpenChange={setTopUpOpen} />

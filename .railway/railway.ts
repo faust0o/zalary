@@ -44,7 +44,9 @@ export default defineRailway(() => {
       CORS_ORIGIN: preserve(),
       DATABASE_URL: preserve(),
       PORT: preserve(),
-      FROSTD_URL: "http://frostd.railway.internal:2744",
+      // Railway resolves the reference, so this follows the frostd service.
+      // The port matches its Dockerfile CMD.
+      FROSTD_URL: "http://${{frostd.RAILWAY_PRIVATE_DOMAIN}}:2744",
     },
   })
 
