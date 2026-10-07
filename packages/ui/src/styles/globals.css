@@ -127,6 +127,16 @@
   * {
     @apply border-border outline-ring/50;
     }
+  /* Keep room for the scrollbar even on pages too short to scroll, so
+     switching between short and long views doesn't shift the layout. */
+  html {
+    scrollbar-gutter: stable;
+    }
+  /* That gutter also stays while a dialog locks scrolling, so the margin
+     Radix adds to make up for the hidden scrollbar would count it twice. */
+  html body[data-scroll-locked] {
+    margin-right: 0 !important;
+    }
   body {
     @apply bg-background text-foreground;
     }
