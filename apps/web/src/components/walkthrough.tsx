@@ -17,6 +17,7 @@ import {
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { WalkthroughStatusDocument } from "../graphql/__generated__/graphql"
+import { useAccountData } from "../hooks/use-account-data"
 
 const STORAGE_KEY = "zalary-walkthrough-collapsed"
 
@@ -40,13 +41,14 @@ function getStepStatus(
 }
 
 export function Walkthrough({
-  onConnectWallet,
+  onCreateTreasury,
 }: {
-  onConnectWallet: () => void
+  onCreateTreasury: () => void
 }) {
-  const { data, loading } = useQuery(WalkthroughStatusDocument, {
+  const { data } = useQuery(WalkthroughStatusDocument, {
     pollInterval: 10_000,
   })
+  const { status, employees, payrolls, runs } = useAccountData()
   const navigate = useNavigate()
   const [collapsed, setCollapsed] = useState(() => {
     try {
@@ -64,8 +66,19 @@ export function Walkthrough({
     }
   }, [collapsed])
 
-  if (loading || !data?.me) return null
-  if (!data.me.needsWalkthrough) return null
+  if (!data?.me || status !== "ready") return null
+  const me = data.me
+  // Only the owner can create the treasury, so it doesn't hold up anyone
+  // else's walkthrough.
+  const needsTreasury = !me.owner && !me.hasTreasury
+  if (
+    employees.length > 0 &&
+    payrolls.length > 0 &&
+    runs.length > 0 &&
+    !needsTreasury
+  ) {
+    return null
+  }
 
   const steps: Step[] = [
     {
@@ -73,35 +86,36 @@ export function Walkthrough({
       description:
         "Head to Employees and add your first team member with their Zcash wallet address.",
       actionLabel: "Go to Employees",
-      completed: data.me.hasEmployees,
+      completed: employees.length > 0,
       onAction: () => navigate("/employees"),
     },
     {
       label: "Create a payroll",
       description: "Set up a payroll schedule and assign employees to it.",
       actionLabel: "Go to Payrolls",
-      completed: data.me.hasPayrolls,
-      onAction: () => navigate("/payrolls"),
-    },
-    {
-      label: "Make a payment",
-      description: "Run a payroll and pay your team by scanning the QR codes.",
-      actionLabel: "Go to Payrolls",
-      completed: data.me.hasPayrollRun,
+      completed: payrolls.length > 0,
       onAction: () => navigate("/payrolls"),
     },
   ]
-  // Delegates use their owner's wallet and can't connect one themselves
-  if (!data.me.owner) {
+  // Members and delegates use their owner's treasury and can't create one
+  if (!me.owner) {
     steps.push({
-      label: "Connect your wallet",
+      label: "Create your treasury",
       description:
-        "Add your viewing key so Zalary can show your balance and verify payments.",
-      actionLabel: "Connect wallet",
-      completed: data.me.hasWallet,
-      onAction: onConnectWallet,
+        "Set up a multisig treasury with your team. Payroll is paid from it once enough of you approve.",
+      actionLabel: "Create treasury",
+      completed: me.hasTreasury,
+      onAction: onCreateTreasury,
     })
   }
+  steps.push({
+    label: "Make a payment",
+    description:
+      "Run a payroll and pay your whole team in one treasury transaction.",
+    actionLabel: "Go to Payrolls",
+    completed: runs.length > 0,
+    onAction: () => navigate("/payrolls"),
+  })
   const completedCount = steps.filter((s) => s.completed).length
 
   return (

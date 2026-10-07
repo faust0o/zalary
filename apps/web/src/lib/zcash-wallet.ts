@@ -1,12 +1,12 @@
 import { del, get, set } from "idb-keyval"
+import { callWorker, setProgressListener, terminateWorker } from "./wasm-worker"
+import { LIGHTWALLETD_URL, ZCASH_NETWORK } from "./zcash-network"
 
-const LIGHTWALLETD_URL =
-  import.meta.env.VITE_LIGHTWALLETD_URL ??
-  "https://zcash-mainnet.chainsafe.dev"
-
-const IDB_KEY = "zcash-wallet-state"
+// Bumped when the persisted format changes; stale state is dropped.
 const WALLET_VERSION_KEY = "zcash-wallet-version"
-const WALLET_VERSION = 21
+const WALLET_VERSION = 22
+// Before treasuries, the wallet tracked a connected viewing key here.
+const LEGACY_STATE_KEY = "zcash-wallet-state"
 
 export interface BalanceInfo {
   spendable: number
@@ -29,133 +29,197 @@ export interface SentTransaction {
   timestamp: number
 }
 
-// --- Worker communication ---
+/** IndexedDB key of a treasury's wallet state on this network. */
+export function walletStorageKey(treasuryId: string): string {
+  return `treasury-wallet:${ZCASH_NETWORK}:${treasuryId}`
+}
 
-let worker: Worker | null = null
-let nextId = 1
-const pending = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>()
-let onProgressCallback: ((scanned: number, tip: number) => void) | null = null
+let initializedKey: string | null = null
+// A Rust panic leaves the wasm wallet unusable ("recursive use of an object"
+// on every later call). Start a fresh worker from the saved state instead.
+let crashed = false
+const CRASH = /wallet crashed|recursive use of an object/i
 
-function getWorker(): Worker {
-  if (!worker) {
-    worker = new Worker(
-      new URL("./zcash-wallet.worker.ts", import.meta.url),
-      { type: "module" }
-    )
-    worker.onmessage = (e) => {
-      const msg = e.data
-      // Progress updates (no id)
-      if (msg.type === "progress") {
-        onProgressCallback?.(msg.scanned, msg.tip)
-        return
-      }
-      // RPC responses
-      const entry = pending.get(msg.id)
-      if (!entry) return
-      pending.delete(msg.id)
-      if (msg.error) {
-        entry.reject(new Error(msg.error))
-      } else {
-        entry.resolve(msg.result)
-      }
+/** A call on the open wallet, restarting it first if it crashed. */
+async function walletCall<T>(
+  type: string,
+  data?: Record<string, unknown>,
+  onStart?: () => void
+): Promise<T> {
+  if (crashed && initializedKey) {
+    const savedState = await get<Uint8Array>(initializedKey)
+    if (!savedState)
+      throw new Error("The wallet crashed and has no saved state")
+    await callWorker("fromBytes", {
+      lightwalletdUrl: LIGHTWALLETD_URL,
+      savedState,
+      network: ZCASH_NETWORK,
+    })
+    crashed = false
+    console.warn("[zcash-wallet] Restarted the wallet after a crash")
+  }
+  try {
+    return await callWorker<T>(type, data, undefined, onStart)
+  } catch (err) {
+    if (err instanceof Error && CRASH.test(err.message)) {
+      console.error("[zcash-wallet]", err.message)
+      crashed = true
+      terminateWorker()
+    }
+    throw err
+  }
+}
+
+async function dropStaleState(): Promise<void> {
+  const savedVersion = await get<number>(WALLET_VERSION_KEY)
+  if (savedVersion === WALLET_VERSION) return
+  console.log("[zcash-wallet] Wallet version changed, clearing stale state")
+  const { keys } = await import("idb-keyval")
+  for (const key of await keys()) {
+    if (typeof key === "string" && key.startsWith("treasury-wallet:")) {
+      await del(key)
     }
   }
-  return worker
+  await del(LEGACY_STATE_KEY)
+  await set(WALLET_VERSION_KEY, WALLET_VERSION)
 }
 
-function call(type: string, data?: Record<string, unknown>, transfer?: Transferable[]): Promise<unknown> {
-  return new Promise((resolve, reject) => {
-    const id = nextId++
-    pending.set(id, { resolve, reject })
-    getWorker().postMessage({ id, type, ...data }, { transfer: transfer ?? [] })
-  })
+/** Whether this browser already holds the treasury's wallet state. */
+export async function hasSavedWallet(storageKey: string): Promise<boolean> {
+  await dropStaleState()
+  return (await get<Uint8Array>(storageKey)) !== undefined
 }
 
-// --- Public API (unchanged interface, now backed by worker) ---
-
-let initialized = false
-
+/**
+ * Open the treasury wallet: from this browser's saved state when there is
+ * one, otherwise from the viewing key the coordinator just unlocked.
+ */
 export async function initializeWallet(
-  ufvk: string,
-  birthdayHeight: number
+  storageKey: string,
+  viewing: { ufvk: string; birthdayHeight: number } | null
 ): Promise<void> {
-  console.log("[zcash-wallet] Initializing wallet in worker...")
+  if (initializedKey === storageKey) return
+  await dropStaleState()
 
-  // Clear stale data if wallet version changed
-  const savedVersion = await get<number>(WALLET_VERSION_KEY)
-  if (savedVersion !== WALLET_VERSION) {
-    console.log("[zcash-wallet] Wallet version changed, clearing stale state")
-    await del(IDB_KEY)
-    await set(WALLET_VERSION_KEY, WALLET_VERSION)
-  }
-
-  // Try restoring from IndexedDB
-  const savedState = await get<Uint8Array>(IDB_KEY)
+  const savedState = await get<Uint8Array>(storageKey)
   if (savedState) {
     try {
-      console.log("[zcash-wallet] Restoring from IndexedDB...")
-      await call("fromBytes", { lightwalletdUrl: LIGHTWALLETD_URL, savedState })
-      initialized = true
-      console.log("[zcash-wallet] Restored successfully")
+      await callWorker("fromBytes", {
+        lightwalletdUrl: LIGHTWALLETD_URL,
+        savedState,
+        network: ZCASH_NETWORK,
+      })
+      initializedKey = storageKey
       return
     } catch (e) {
       console.warn("[zcash-wallet] Failed to restore, creating new:", e)
-      await del(IDB_KEY)
+      await del(storageKey)
     }
   }
 
-  console.log("[zcash-wallet] Creating new wallet at birthday height", birthdayHeight)
-  await call("create", { lightwalletdUrl: LIGHTWALLETD_URL, ufvk, birthdayHeight })
-  initialized = true
-  console.log("[zcash-wallet] Wallet created successfully")
+  if (!viewing) throw new Error("Unlock the treasury to load its wallet")
+  await callWorker("create", {
+    lightwalletdUrl: LIGHTWALLETD_URL,
+    ufvk: viewing.ufvk,
+    birthdayHeight: viewing.birthdayHeight,
+    network: ZCASH_NETWORK,
+  })
+  initializedKey = storageKey
+  await persist()
+}
+
+async function persist(): Promise<void> {
+  if (!initializedKey) return
+  try {
+    const bytes = await walletCall<Uint8Array>("toBytes")
+    await set(initializedKey, bytes)
+  } catch (e) {
+    console.warn("[zcash-wallet] Failed to persist wallet state:", e)
+  }
 }
 
 export async function syncWallet(
   onProgress?: (scannedHeight: number, chainTipHeight: number) => void
 ): Promise<SyncSummary> {
-  if (!initialized) throw new Error("Wallet not initialized")
-
-  onProgressCallback = onProgress ?? null
-  console.log("[zcash-wallet] Starting sync in worker...")
-  const summary = (await call("sync")) as SyncSummary
-  onProgressCallback = null
-  console.log("[zcash-wallet] Sync complete:", summary)
-
-  // Persist to IndexedDB
+  if (!initializedKey) throw new Error("Wallet not initialized")
+  setProgressListener(onProgress ?? null)
   try {
-    const bytes = (await call("toBytes")) as Uint8Array
-    await set(IDB_KEY, bytes)
-  } catch (e) {
-    console.warn("[zcash-wallet] Failed to persist wallet state:", e)
+    return await walletCall<SyncSummary>("sync")
+  } finally {
+    setProgressListener(null)
+    await persist()
   }
-
-  return summary
 }
 
 export async function getBalance(): Promise<BalanceInfo> {
-  if (!initialized) return { spendable: 0, pending: 0, total: 0 }
-  return (await call("getBalance")) as BalanceInfo
+  if (!initializedKey) return { spendable: 0, pending: 0, total: 0 }
+  return walletCall<BalanceInfo>("getBalance")
 }
 
 export async function getSentTransactions(): Promise<SentTransaction[]> {
-  if (!initialized) return []
-  return (await call("getSentTransactions")) as SentTransaction[]
+  if (!initializedKey) return []
+  return walletCall<SentTransaction[]>("getSentTransactions")
 }
 
-/** Derive the default shielded unified address of the UFVK. */
+/**
+ * Build the unsigned, unproven PCZT paying a ZIP-321 request from the
+ * treasury, valid until `expiryDelta` blocks past the chain tip.
+ */
+export async function createPczt(
+  paymentRequest: string,
+  expiryDelta: number
+): Promise<Uint8Array> {
+  if (!initializedKey) throw new Error("Wallet not initialized")
+  const pczt = await walletCall<Uint8Array>("createPczt", {
+    paymentRequest,
+    expiryDelta,
+  })
+  // Building a PCZT can record wallet metadata; keep it.
+  await persist()
+  return pczt
+}
+
+/**
+ * Extract the transaction from a proven, fully signed PCZT and record it in
+ * the wallet; sending it is up to the caller. `onStart` fires once a running
+ * sync is out of the way.
+ */
+export async function extractTransaction(
+  pczt: Uint8Array,
+  onStart?: () => void
+): Promise<{ txid: string; raw: Uint8Array }> {
+  if (!initializedKey) throw new Error("Wallet not initialized")
+  const extracted = await walletCall<{ txid: string; raw: Uint8Array }>(
+    "extractTransaction",
+    { pczt },
+    onStart
+  )
+  await persist()
+  return extracted
+}
+
+/** Default shielded unified address of a UFVK. */
 export async function deriveUnifiedAddress(ufvk: string): Promise<string> {
-  return (await call("deriveAddress", { ufvk })) as string
+  return callWorker<string>("fn", {
+    name: "deriveUnifiedAddress",
+    args: [ufvk, ZCASH_NETWORK],
+  })
 }
 
 export function isInitialized(): boolean {
-  return initialized
+  return initializedKey !== null
 }
 
+/** Forget every treasury wallet in this browser, e.g. on logout. */
 export async function clearWalletState(): Promise<void> {
-  await del(IDB_KEY)
-  initialized = false
-  if (worker) {
-    worker.terminate()
-    worker = null
+  const { keys } = await import("idb-keyval")
+  for (const key of await keys()) {
+    if (typeof key === "string" && key.startsWith("treasury-wallet:")) {
+      await del(key)
+    }
   }
+  await del(LEGACY_STATE_KEY)
+  initializedKey = null
+  crashed = false
+  terminateWorker()
 }

@@ -14,9 +14,7 @@ import {
 } from "@workspace/ui/components/sidebar"
 import { cn } from "@workspace/ui/lib/utils"
 import {
-  ArrowLeftRight,
   Calendar,
-  Handshake,
   LayoutDashboard,
   LogOut,
   Monitor,
@@ -25,29 +23,24 @@ import {
   Settings,
   Sun,
   Users,
-  Wallet,
+  Vault,
 } from "lucide-react"
 import { useCallback, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import { MeSidebarDocument } from "../graphql/__generated__/graphql"
 import { useAuth } from "../hooks/use-auth"
-import { useZcashWallet } from "../hooks/use-zcash-wallet"
+import { useTreasuryWallet } from "../hooks/use-treasury-wallet"
 import { useZecPrice } from "../hooks/use-zec-price"
 import { useTheme } from "./theme-provider"
 import { TopUpModal } from "./top-up-modal"
+import { Wordmark } from "./wordmark"
 
 const defaultNavItems = [
   { title: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
   { title: "Payrolls", icon: Calendar, path: "/payrolls" },
   { title: "Employees", icon: Users, path: "/employees" },
-  { title: "Transactions", icon: ArrowLeftRight, path: "/transactions" },
+  { title: "Treasury", icon: Vault, path: "/treasury" },
 ]
-
-const delegationsNavItem = {
-  title: "Delegations",
-  icon: Handshake,
-  path: "/delegations",
-}
 
 export interface AppSidebarProps {
   /** Override the displayed username */
@@ -58,14 +51,14 @@ export interface AppSidebarProps {
   navItems?: { title: string; icon: typeof LayoutDashboard; path: string }[]
   /** Override the logout button label and action */
   footerAction?: { label: string; icon: typeof LogOut; onClick: () => void }
-  /** Hide wallet sync status */
-  hideWalletSync?: boolean
+  /** Hide treasury sync status */
+  hideTreasurySync?: boolean
   /** Hide settings nav item */
   hideSettings?: boolean
   /** Override the Top Up button action (defaults to the swap dialog) */
   onTopUp?: () => void
-  /** Set while the account has no wallet: replaces the balance with a prompt */
-  onConnectWallet?: () => void
+  /** Set while the account has no treasury: replaces the balance with a prompt */
+  onCreateTreasury?: () => void
 }
 
 export function AppSidebar({
@@ -73,45 +66,34 @@ export function AppSidebar({
   overrideBalance,
   navItems,
   footerAction,
-  hideWalletSync,
+  hideTreasurySync,
   hideSettings,
   onTopUp,
-  onConnectWallet,
+  onCreateTreasury,
 }: AppSidebarProps = {}) {
   const location = useLocation()
   const navigate = useNavigate()
 
   const { user, logout } = useAuth()
   const { data } = useQuery(MeSidebarDocument, { skip: !user })
-  // Delegates have an owner. They can't manage delegations, and without the
-  // owner's viewing key their browser has no wallet to show a balance from.
+  // Members and delegates have an owner, whose treasury they share.
   const owner = data?.me?.owner
-  const isAccountOwner = data?.me != null && owner == null
-  const items =
-    navItems ??
-    (isAccountOwner
-      ? [...defaultNavItems, delegationsNavItem]
-      : defaultNavItems)
+  const items = navItems ?? defaultNavItems
+  const hasTreasury = data?.treasury?.status === "ACTIVE"
 
   const username =
     overrideUsername ??
     (data as { me?: { username: string } })?.me?.username ??
     user?.username
   const {
-    balance: walletBalance,
-    syncing,
+    displayBalance,
+    catchingUp,
     lastSyncedHeight,
     syncProgress,
-    initialized: walletInitialized,
-    error: walletError,
-  } = useZcashWallet()
-  const graphqlBalance =
-    (data as { zecBalance?: { available: number } })?.zecBalance?.available ?? 0
-  const balance =
-    overrideBalance ??
-    (lastSyncedHeight !== null && walletBalance !== null
-      ? walletBalance.total
-      : graphqlBalance)
+    initialized: treasuryInitialized,
+    error: treasuryError,
+  } = useTreasuryWallet()
+  const balance = overrideBalance ?? displayBalance ?? 0
   const { theme, setTheme } = useTheme()
   const { price: zecPrice, priceHistory } = useZecPrice()
   const [hoverPrice, setHoverPrice] = useState<number | null>(null)
@@ -133,8 +115,7 @@ export function AppSidebar({
     <Sidebar>
       <SidebarHeader>
         <div className="flex items-center gap-3 p-2">
-          <img src="/zalary-logo.svg" alt="Zalary" className="size-10" />
-          <span className="text-xl font-medium tracking-wide">Zalary</span>
+          <Wordmark className="h-6" />
           <div className="ml-auto flex items-center rounded-full border border-border p-0.5">
             {[
               {
@@ -164,12 +145,9 @@ export function AppSidebar({
         </div>
         <div className="inset-0 rounded-lg border border-border px-2 py-1 shadow-sm">
           <div className="flex items-center gap-3">
+            {/* Keyed by username, which is unique and known right away */}
             <Identicon
-              hash={
-                (data as { me?: { id: string } })?.me?.id ??
-                user?.id ??
-                username
-              }
+              hash={username}
               size={40}
               className="rounded-lg"
             />
@@ -177,18 +155,18 @@ export function AppSidebar({
               <p className="mt-1 truncate text-xs text-muted-foreground">
                 {username}
               </p>
-              {owner ? (
+              {owner && !hasTreasury && overrideBalance === undefined ? (
                 <p className="truncate text-sm font-medium">
                   for @{owner.username}
                 </p>
-              ) : onConnectWallet ? (
+              ) : onCreateTreasury ? (
                 <button
                   type="button"
-                  onClick={onConnectWallet}
+                  onClick={onCreateTreasury}
                   className="flex cursor-pointer items-center gap-1.5 text-lg font-medium text-[var(--primary-dark)] hover:underline dark:text-primary"
                 >
-                  <Wallet className="size-4" />
-                  Connect wallet
+                  <Vault className="size-4" />
+                  Create treasury
                 </button>
               ) : (
                 <p className="text-xl font-medium">
@@ -200,19 +178,19 @@ export function AppSidebar({
               )}
             </div>
           </div>
-          {/* Wallet sync status */}
-          {!hideWalletSync && (
+          {/* Treasury sync status */}
+          {!hideTreasurySync && (
             <>
-              {walletError ? (
+              {treasuryError ? (
                 <p className="mt-1.5 truncate text-xs text-red-500">
-                  {walletError}
+                  {treasuryError}
                 </p>
-              ) : syncing ? (
+              ) : catchingUp ? (
                 <div className="mt-1.5">
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <span className="inline-block size-1.5 animate-pulse rounded-full bg-amber-400" />
-                      <span className="text-shimmer">Syncing wallet...</span>
+                      <span className="text-shimmer">Syncing treasury...</span>
                     </span>
                     {syncProgress !== null && <span>{syncProgress}%</span>}
                   </div>
@@ -225,7 +203,7 @@ export function AppSidebar({
                     </div>
                   )}
                 </div>
-              ) : walletInitialized && lastSyncedHeight !== null ? (
+              ) : treasuryInitialized && lastSyncedHeight !== null ? (
                 <p className="mt-1.5 text-xs text-muted-foreground">
                   Synced to block {lastSyncedHeight.toLocaleString()}
                 </p>
@@ -237,7 +215,9 @@ export function AppSidebar({
           <>
             <Button
               className="w-full"
-              onClick={onTopUp ?? onConnectWallet ?? (() => setTopUpOpen(true))}
+              onClick={
+                onTopUp ?? onCreateTreasury ?? (() => setTopUpOpen(true))
+              }
             >
               <Plus />
               Top Up

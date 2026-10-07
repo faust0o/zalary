@@ -1,4 +1,3 @@
-import { useMutation, useQuery } from "@apollo/client/react"
 import { Button } from "@workspace/ui/components/button"
 import { Card, CardContent } from "@workspace/ui/components/card"
 import { Input } from "@workspace/ui/components/input"
@@ -13,28 +12,27 @@ import {
 import { ArrowLeft, Trash2, X } from "lucide-react"
 import { useMemo, useRef, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
+import { useAccountData } from "../hooks/use-account-data"
 import { useTitle } from "../hooks/use-title"
-import { PayrollDocument, PayrollsDocument, AllEmployeesDocument, CreatePayrollDocument, UpdatePayrollDocument, DeletePayrollDocument } from "../graphql/__generated__/graphql"
-import type { Schedule } from "../graphql/__generated__/graphql"
+import {
+  createPayroll,
+  deletePayroll,
+  updatePayroll,
+  type Schedule,
+} from "../lib/payroll-records"
 
 export function PayrollDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const isNew = id === "new"
-  useTitle(isNew ? "Create Payroll" : "Edit Payroll")
+  const account = useAccountData()
+  // Members may look but not change anything.
+  const readOnly = !account.canEdit
+  useTitle(isNew ? "Create Payroll" : readOnly ? "Payroll" : "Edit Payroll")
 
-  const { data: payrollData } = useQuery(PayrollDocument, {
-    variables: { id: id! },
-    skip: isNew || !id,
-  })
-  const { data: employeesData } = useQuery(AllEmployeesDocument)
-
-  const refetchPayrolls = { refetchQueries: [{ query: PayrollsDocument }] }
-  const [createPayroll] = useMutation(CreatePayrollDocument, refetchPayrolls)
-  const [updatePayroll] = useMutation(UpdatePayrollDocument, refetchPayrolls)
-  const [deletePayroll] = useMutation(DeletePayrollDocument, refetchPayrolls)
-
-  const payroll = payrollData?.payroll
+  const payroll = isNew
+    ? undefined
+    : account.payrolls.find((p) => p.id === id)
   const [name, setName] = useState("")
   const [schedule, setSchedule] = useState<Schedule>("EVERY_MONTH")
   const [customDays, setCustomDays] = useState("")
@@ -45,13 +43,11 @@ export function PayrollDetailPage() {
     setName(payroll.name ?? "")
     setSchedule((payroll.schedule as Schedule) ?? "EVERY_MONTH")
     setCustomDays(payroll.customDays?.toString() ?? "")
-    setSelectedEmployeeIds(
-      (payroll.employees ?? []).map((pe) => pe.employeeId ?? "").filter(Boolean)
-    )
+    setSelectedEmployeeIds(payroll.employeeIds)
     setInitialized(true)
   }
 
-  const allEmployees = useMemo(() => employeesData?.employees ?? [], [employeesData])
+  const allEmployees = account.employees
 
   const [employeeSearch, setEmployeeSearch] = useState("")
   const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -78,26 +74,37 @@ export function PayrollDetailPage() {
     setSelectedEmployeeIds((prev) => prev.filter((id) => id !== empId))
   }
 
+  const [saveError, setSaveError] = useState<string | null>(null)
+
   async function handleSave() {
-    const variables = {
+    const input = {
       name,
       schedule,
       customDays: schedule === "EVERY_X_DAYS" ? parseInt(customDays) : null,
-      employeeIds: selectedEmployeeIds,
+      // Only employees who still exist.
+      employeeIds: selectedEmployeeIds.filter((empId) =>
+        allEmployees.some((e) => e.id === empId)
+      ),
     }
-
-    if (isNew) {
-      await createPayroll({ variables })
-    } else {
-      await updatePayroll({ variables: { id: id!, ...variables } })
+    setSaveError(null)
+    try {
+      await account.write({
+        put: [payroll ? updatePayroll(payroll, input) : createPayroll(input)],
+      })
+      navigate("/payrolls")
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Couldn't save.")
     }
-    navigate("/payrolls")
   }
 
   async function handleDelete() {
-    if (!isNew && id) {
-      await deletePayroll({ variables: { id } })
+    if (!payroll) return
+    setSaveError(null)
+    try {
+      await account.write(deletePayroll(payroll.id, account.runs))
       navigate("/payrolls")
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Couldn't delete.")
     }
   }
 
@@ -112,12 +119,13 @@ export function PayrollDetailPage() {
           <ArrowLeft className="size-4" />
         </Button>
         <h2 className="text-4xl font-light tracking-tight">
-          {isNew ? "Create Payroll" : "Edit Payroll"}
+          {isNew ? "Create Payroll" : readOnly ? "Payroll" : "Edit Payroll"}
         </h2>
       </div>
 
       <Card className="overflow-visible">
-        <CardContent className="space-y-6 overflow-visible">
+        <CardContent className="overflow-visible">
+          <fieldset disabled={readOnly} className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="payroll-name">Payroll Name</Label>
             <Input
@@ -233,20 +241,31 @@ export function PayrollDetailPage() {
             )}
           </div>
 
-          <div className="flex gap-2">
-            <Button
-              onClick={handleSave}
-              disabled={!name || selectedEmployeeIds.length === 0}
-            >
-              {isNew ? "Create Payroll" : "Save Changes"}
-            </Button>
-            {!isNew && (
-              <Button variant="destructive" onClick={handleDelete}>
-                <Trash2 className="mr-2 size-4" />
-                Delete Payroll
+          {saveError && (
+            <p className="text-sm text-destructive">{saveError}</p>
+          )}
+          {readOnly ? (
+            <p className="text-sm text-muted-foreground">
+              Members can view payrolls. Ask the account owner to make you a
+              delegate to change them.
+            </p>
+          ) : (
+            <div className="flex gap-2">
+              <Button
+                onClick={handleSave}
+                disabled={!name || selectedEmployeeIds.length === 0}
+              >
+                {isNew ? "Create Payroll" : "Save Changes"}
               </Button>
-            )}
-          </div>
+              {!isNew && (
+                <Button variant="destructive" onClick={handleDelete}>
+                  <Trash2 className="mr-2 size-4" />
+                  Delete Payroll
+                </Button>
+              )}
+            </div>
+          )}
+          </fieldset>
         </CardContent>
       </Card>
     </div>

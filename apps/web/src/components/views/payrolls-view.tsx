@@ -24,8 +24,8 @@ export interface PayrollsPayroll {
 
 export interface PayrollsViewProps {
   payrolls: PayrollsPayroll[]
-  /** Null when unknown, e.g. for delegates, who have no wallet. */
-  walletBalance: number | null
+  /** Null when unknown, e.g. before the treasury exists. */
+  treasuryBalance: number | null
   zecPrice: number | null
   loading: boolean
   onDisburse?: (payrollId: string | null) => void
@@ -36,7 +36,7 @@ export interface PayrollsViewProps {
 
 export function PayrollsView({
   payrolls,
-  walletBalance,
+  treasuryBalance,
   zecPrice,
   loading,
   onDisburse,
@@ -60,8 +60,8 @@ export function PayrollsView({
 
   const hasSufficientFunds =
     totalSettlementZec !== null &&
-    walletBalance !== null &&
-    walletBalance >= totalSettlementZec
+    treasuryBalance !== null &&
+    treasuryBalance >= totalSettlementZec
 
   const totalRecipients = useMemo(() => {
     const ids = new Set<string>()
@@ -93,14 +93,18 @@ export function PayrollsView({
       <div className="flex items-center justify-between">
         <h2 className="text-4xl font-light tracking-tight">Payrolls</h2>
         <div className="flex gap-2">
-          <Button variant="secondary" onClick={onCreatePayroll}>
-            <Plus className="mr-2 size-4" />
-            Create Payroll
-          </Button>
-          <Button onClick={() => onDisburse?.(null)}>
-            <Banknote className="mr-2 size-4" />
-            Disburse
-          </Button>
+          {onCreatePayroll && (
+            <Button variant="secondary" onClick={onCreatePayroll}>
+              <Plus className="mr-2 size-4" />
+              Create Payroll
+            </Button>
+          )}
+          {onDisburse && (
+            <Button onClick={() => onDisburse(null)}>
+              <Banknote className="mr-2 size-4" />
+              Disburse
+            </Button>
+          )}
         </div>
       </div>
 
@@ -130,14 +134,14 @@ export function PayrollsView({
                 {totalRecipients}
               </p>
             </div>
-            {walletBalance !== null && (
+            {treasuryBalance !== null && (
               <>
                 <div>
                   <p className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
-                    ZEC Balance
+                    Treasury Balance
                   </p>
                   <p className="mt-1 text-xl font-light">
-                    {walletBalance.toFixed(4)} ZEC
+                    {treasuryBalance.toFixed(4)} ZEC
                   </p>
                 </div>
                 <div>

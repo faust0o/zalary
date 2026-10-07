@@ -9,6 +9,7 @@ import { useEffect, useRef } from "react"
 import { useNavigate } from "react-router-dom"
 import { useAuth } from "../hooks/use-auth"
 import { AuthForm } from "./auth-form"
+import { Wordmark } from "./wordmark"
 
 export function AuthModal({
   open,
@@ -32,12 +33,9 @@ export function AuthModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader className="text-center">
-          <img
-            src="/zalary-logo.svg"
-            alt="Zalary"
-            className="mx-auto mb-2 h-12"
-          />
-          <DialogTitle className="text-2xl font-bold">Zalary</DialogTitle>
+          <DialogTitle>
+            <Wordmark className="mx-auto mb-1 h-9" />
+          </DialogTitle>
           <DialogDescription>Username and password</DialogDescription>
         </DialogHeader>
         <AuthForm

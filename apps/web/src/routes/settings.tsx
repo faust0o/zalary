@@ -17,15 +17,30 @@ import {
 } from "@workspace/ui/components/dialog"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
-import { useEffect, useState, type FormEvent } from "react"
+import { Download, Fingerprint, KeyRound, Loader2 } from "lucide-react"
+import { useState, type FormEvent } from "react"
 import {
+  AccountMembersDocument,
   ChangePasswordDocument,
   DeleteAccountDocument,
   MeSettingsDocument,
-  UpdateUserDocument,
+  MyPasskeysDocument,
+  RemovePasskeyDocument,
+  TreasuryDocument,
 } from "../graphql/__generated__/graphql"
+import { useAccountData } from "../hooks/use-account-data"
 import { useAuth } from "../hooks/use-auth"
+import { useSpendProposals } from "../hooks/use-spend-proposals"
 import { useTitle } from "../hooks/use-title"
+import { useTreasuryWallet } from "../hooks/use-treasury-wallet"
+import { useVault } from "../hooks/use-vault"
+import { keyFingerprint } from "../lib/account-key"
+import { exportZip } from "../lib/export-data"
+import {
+  logPasskeyFailure,
+  PasskeyConfirmationNeeded,
+  passkeyEnvironmentProblem,
+} from "../lib/vault"
 import { saveActiveSwap } from "../lib/near-intents"
 import { setSessionToken } from "../lib/session"
 
@@ -38,10 +53,7 @@ function errorMessage(err: unknown, fallback: string): string {
 export function SettingsPage() {
   useTitle("Settings")
   const { data, loading } = useQuery(MeSettingsDocument)
-  const [updateUser] = useMutation(UpdateUserDocument)
   const [changePassword] = useMutation(ChangePasswordDocument)
-  const [viewingKey, setViewingKey] = useState("")
-  const [saved, setSaved] = useState(false)
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
@@ -49,23 +61,12 @@ export function SettingsPage() {
   const [passwordSaved, setPasswordSaved] = useState(false)
   const [changingPassword, setChangingPassword] = useState(false)
   const { logout } = useAuth()
+  const { displayBalance } = useTreasuryWallet()
   const [deleteAccount] = useMutation(DeleteAccountDocument)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteConfirmation, setDeleteConfirmation] = useState("")
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
-
-  useEffect(() => {
-    if (data?.me?.zcashViewingKey) {
-      setViewingKey(data.me.zcashViewingKey)
-    }
-  }, [data])
-
-  async function handleSave() {
-    await updateUser({ variables: { zcashViewingKey: viewingKey } })
-    setSaved(true)
-    setTimeout(() => setSaved(false), 3000)
-  }
 
   async function handleChangePassword(e: FormEvent) {
     e.preventDefault()
@@ -116,7 +117,10 @@ export function SettingsPage() {
     setDeleteError(null)
     setDeleting(true)
     try {
-      await deleteAccount()
+      // Only this browser can open the treasury's balance.
+      await deleteAccount({
+        variables: { treasuryEmpty: displayBalance === 0 },
+      })
       saveActiveSwap(null)
       // Clears the session; the layout then redirects to the landing page.
       await logout()
@@ -209,36 +213,9 @@ export function SettingsPage() {
         </CardContent>
       </Card>
 
-      {!owner && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Viewing Key</CardTitle>
-            <CardDescription>
-              Your Zcash viewing key allows Zalary to track your balance and
-              transaction history. This is read-only access and cannot be used
-              to spend funds.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Input
-              id="viewing-key"
-              value={viewingKey}
-              onChange={(e) => setViewingKey(e.target.value)}
-              onFocus={(e) => e.target.select()}
-              placeholder="zxviews1..."
-              className="h-12 font-mono !text-lg"
-            />
-            <div className="flex items-center gap-2">
-              <Button onClick={handleSave}>Save Viewing Key</Button>
-              {saved && (
-                <span className="text-sm text-green-600">
-                  Saved successfully
-                </span>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <PasskeysCard />
+
+      <ExportDataCard />
 
       <Card className="ring-destructive/30">
         <CardHeader>
@@ -246,14 +223,15 @@ export function SettingsPage() {
           <CardDescription>
             {owner ? (
               <>
-                Permanently delete your delegate login. @{owner.username}
+                Permanently delete your login. @{owner.username}
                 &apos;s payroll data is not affected.
               </>
             ) : (
               <>
                 Permanently delete your account and all of its data: employees,
-                payrolls, payment history, your viewing key and any delegate
-                logins. This cannot be undone.
+                payrolls, payment history, your treasury and every member and
+                delegate login. Pay out the treasury first: its keys go too.
+                This cannot be undone.
               </>
             )}
           </CardDescription>
@@ -272,10 +250,8 @@ export function SettingsPage() {
               <DialogTitle>Delete your account?</DialogTitle>
               <DialogDescription>
                 This permanently deletes{" "}
-                {owner
-                  ? "your delegate login"
-                  : "your account and all of its data"}
-                . There is no way to recover it.
+                {owner ? "your login" : "your account and all of its data"}.
+                There is no way to recover it.
               </DialogDescription>
             </DialogHeader>
             {deleteError && (
@@ -323,5 +299,235 @@ export function SettingsPage() {
         </DialogContent>
       </Dialog>
     </div>
+  )
+}
+
+/** Passkeys open the vault holding the user's treasury secrets. */
+function PasskeysCard() {
+  const { user } = useAuth()
+  const vault = useVault()
+  const [removePasskey] = useMutation(RemovePasskeyDocument, {
+    refetchQueries: [MyPasskeysDocument],
+    awaitRefetchQueries: true,
+  })
+  const [busy, setBusy] = useState<string | null>(null)
+  const [removeError, setRemoveError] = useState<string | null>(null)
+  const [confirming, setConfirming] = useState(false)
+  const [environmentProblem] = useState(passkeyEnvironmentProblem)
+
+  async function handleAdd() {
+    setBusy("add")
+    try {
+      if (confirming) {
+        await vault.confirmSetUp()
+        setConfirming(false)
+      } else if (vault.hasPasskey && !vault.keys) {
+        // A new passkey wraps the same vault key, so open the vault first.
+        // Browsers want a separate click for each passkey request.
+        await vault.unlock()
+      } else {
+        await vault.setUp(user?.name)
+      }
+    } catch (err) {
+      if (err instanceof PasskeyConfirmationNeeded) setConfirming(true)
+      else void logPasskeyFailure(err)
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function handleRemove(id: string) {
+    setBusy(id)
+    setRemoveError(null)
+    try {
+      await removePasskey({ variables: { id } })
+    } catch (err) {
+      setRemoveError(errorMessage(err, "Couldn't remove the passkey."))
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const addLabel = confirming
+    ? "Confirm passkey"
+    : !vault.hasPasskey
+      ? "Set up passkey"
+      : vault.keys
+        ? "Add backup passkey"
+        : "Unlock to add a backup passkey"
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Passkeys</CardTitle>
+        <CardDescription>
+          Your passkey opens your keys: the one your account's payroll data is
+          encrypted with, your share of the treasury key and, for the owner,
+          the treasury's viewing key. Zalary only stores them encrypted. Add a
+          second passkey as a backup: without one, they're gone if you lose
+          this one.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {vault.loading ? null : vault.passkeys.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No passkeys yet.</p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {vault.passkeys.map((passkey, i) => (
+              <li
+                key={passkey.id}
+                className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
+              >
+                <KeyRound className="size-4 text-muted-foreground" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium">Passkey {i + 1}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    Added{" "}
+                    {new Date(passkey.createdAt).toLocaleDateString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}{" "}
+                    · {passkey.credentialId.slice(0, 12)}…
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={busy !== null}
+                  onClick={() => handleRemove(passkey.id)}
+                >
+                  {busy === passkey.id ? "Removing..." : "Remove"}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {removeError && (
+          <p className="text-sm text-destructive">{removeError}</p>
+        )}
+        {vault.keys && (
+          <p className="text-xs text-muted-foreground">
+            Your public key:{" "}
+            <span className="font-mono text-foreground">
+              {keyFingerprint(vault.keys.commsPublicKey)}
+            </span>
+            . Whoever shares payroll data with you sees the same.
+          </p>
+        )}
+        <Button
+          variant="outline"
+          title={environmentProblem ?? undefined}
+          disabled={busy !== null || vault.loading || !!environmentProblem}
+          onClick={handleAdd}
+        >
+          {busy === "add" ? (
+            <Loader2 className="animate-spin" />
+          ) : (
+            <Fingerprint />
+          )}
+          {addLabel}
+        </Button>
+      </CardContent>
+    </Card>
+  )
+}
+
+/**
+ * Everything this user can see of the account's payroll data, decrypted here
+ * and downloaded as CSV files with a README.
+ */
+function ExportDataCard() {
+  const { user } = useAuth()
+  const account = useAccountData()
+  const ready = account.status === "ready"
+  const { proposals, loading: proposalsLoading } = useSpendProposals({
+    skip: !ready,
+  })
+  const { data: meData } = useQuery(MeSettingsDocument)
+  const { data: treasuryData } = useQuery(TreasuryDocument, { skip: !ready })
+  const { data: membersData } = useQuery(AccountMembersDocument, {
+    skip: !ready,
+  })
+  const wallet = useTreasuryWallet()
+  const [error, setError] = useState<string | null>(null)
+
+  const loading = proposalsLoading || !treasuryData || !membersData
+
+  function handleExport() {
+    setError(null)
+    try {
+      const exportedAt = new Date()
+      const treasury = treasuryData?.treasury ?? null
+      const signers = new Set(
+        (treasury?.members ?? [])
+          .filter((m) => m.hasKeyShare)
+          .map((m) => m.user.id)
+      )
+      const live = wallet.balance && wallet.lastSyncedHeight !== null
+      const { blob, filename } = exportZip({
+        exportedAt,
+        exportedBy: user?.username ?? "",
+        accountOwner:
+          meData?.me?.owner?.username ?? meData?.me?.username ?? "account",
+        employees: account.employees,
+        payrolls: account.payrolls,
+        runs: account.runs,
+        spends: proposals,
+        treasury: treasury && {
+          name: treasury.name,
+          description: treasury.description,
+          status: treasury.status,
+          threshold: treasury.threshold,
+          signerCount: treasury.signerCount,
+          address: wallet.address ?? treasury.address,
+        },
+        treasuryBalanceZec: wallet.displayBalance,
+        treasuryBalanceAsOf: live
+          ? exportedAt.toISOString()
+          : wallet.reportedAt,
+        people: (membersData?.accountMembers ?? []).map((m) => ({
+          ...m,
+          isSigner: signers.has(m.id),
+        })),
+      })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = filename
+      link.click()
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+    } catch (err) {
+      setError(errorMessage(err, "Couldn't export the data."))
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Export my data</CardTitle>
+        <CardDescription>
+          Download your employees, payrolls, payments, treasury payments and
+          who has access as CSV files, with a README explaining each one. Your
+          browser decrypts them; Zalary never sees them unencrypted.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {account.status === "no-access" && (
+          <p className="text-sm text-muted-foreground">
+            Nobody has shared the payroll data with you yet.
+          </p>
+        )}
+        {error && <p className="text-sm text-destructive">{error}</p>}
+        <Button
+          variant="outline"
+          disabled={!ready || loading}
+          onClick={handleExport}
+        >
+          {ready && loading ? <Loader2 className="animate-spin" /> : <Download />}
+          Export my data
+        </Button>
+      </CardContent>
+    </Card>
   )
 }

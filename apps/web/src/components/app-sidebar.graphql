@@ -2,12 +2,15 @@ query MeSidebar {
   me {
     id
     username
+    isAccountOwner
     owner {
       id
       username
     }
   }
-  zecBalance {
-    available
+  treasury {
+    id
+    name
+    status
   }
 }

@@ -1,45 +1,33 @@
 import { useQuery } from "@apollo/client/react"
 import { SidebarInset, SidebarProvider } from "@workspace/ui/components/sidebar"
 import { TooltipProvider } from "@workspace/ui/components/tooltip"
-import { useState } from "react"
-import { Navigate, Outlet } from "react-router-dom"
+import { Navigate, Outlet, useNavigate } from "react-router-dom"
+import { AccessRequests } from "../components/account-access"
 import { AppSidebar } from "../components/app-sidebar"
 import { CoiGuard } from "../components/coi-guard"
-import { ConnectWalletModal } from "../components/connect-wallet-modal"
 import { MobileGuard } from "../components/mobile-guard"
+import { SpendAgentProvider } from "../components/treasury/spend-agent"
+import { VaultGate } from "../components/vault-gate"
 import { Walkthrough } from "../components/walkthrough"
+import { Wordmark } from "../components/wordmark"
 import { MeLayoutDocument } from "../graphql/__generated__/graphql"
+import { AccountDataProvider } from "../hooks/use-account-data"
 import { useAuth } from "../hooks/use-auth"
-import { ZcashWalletProvider } from "../hooks/use-zcash-wallet"
+import { TreasuryWalletProvider } from "../hooks/use-treasury-wallet"
 
 export function Layout() {
   const { user, loading } = useAuth()
-  const {
-    data: meData,
-    loading: meLoading,
-    refetch: refetchMe,
-  } = useQuery(MeLayoutDocument, { skip: !user })
-  const [connectWalletOpen, setConnectWalletOpen] = useState(false)
-
-  const meLoaded = !meLoading && meData?.me != null
-  const missingWalletConfig =
-    meLoaded &&
-    (!meData.me?.zcashViewingKey || !meData.me?.walletBirthdayHeight)
-
-  // Only the owner can set the wallet up; delegates use the owner's.
-  const needsWallet = missingWalletConfig && !meData.me?.owner
-  const openConnectWallet = () => setConnectWalletOpen(true)
+  const navigate = useNavigate()
+  const { data: meData } = useQuery(MeLayoutDocument, {
+    skip: !user,
+    // Picks up the treasury going live after its key ceremony.
+    pollInterval: 30_000,
+  })
 
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <div className="text-sm text-muted-foreground">
-          <img
-            src="/zalary-logo.svg"
-            alt="Zalary"
-            className="size-30 animate-pulse"
-          />
-        </div>
+        <Wordmark className="h-10 animate-pulse" />
       </div>
     )
   }
@@ -48,36 +36,39 @@ export function Layout() {
     return <Navigate to="/" replace />
   }
 
-  const ufvk = meData?.me?.zcashViewingKey ?? null
-  const birthdayHeight = meData?.me?.walletBirthdayHeight ?? null
+  const me = meData?.me
+  const treasury = meData?.treasury ?? null
+  // Only the owner can create the treasury; everyone else waits for it.
+  const needsTreasury =
+    !!me?.isAccountOwner && (!treasury || treasury.status !== "ACTIVE")
+  const openTreasury = () => navigate("/treasury")
 
   return (
     <MobileGuard>
       <CoiGuard>
-        <ZcashWalletProvider ufvk={ufvk} birthdayHeight={birthdayHeight}>
-          <TooltipProvider>
-            <SidebarProvider>
-              <AppSidebar
-                onConnectWallet={needsWallet ? openConnectWallet : undefined}
-              />
-              <SidebarInset>
-                <main className="flex-1 overflow-auto bg-gray-50 p-6 dark:bg-neutral-900">
-                  <div className="mx-auto w-full max-w-5xl">
-                    <Outlet />
-                  </div>
-                </main>
-              </SidebarInset>
-              <ConnectWalletModal
-                open={connectWalletOpen}
-                onOpenChange={(open) => {
-                  setConnectWalletOpen(open)
-                  if (!open) refetchMe()
-                }}
-              />
-              <Walkthrough onConnectWallet={openConnectWallet} />
-            </SidebarProvider>
-          </TooltipProvider>
-        </ZcashWalletProvider>
+        <AccountDataProvider>
+          <TreasuryWalletProvider treasury={treasury}>
+            <SpendAgentProvider>
+              <TooltipProvider>
+                <SidebarProvider>
+                  <AppSidebar
+                    onCreateTreasury={needsTreasury ? openTreasury : undefined}
+                  />
+                  <SidebarInset>
+                    <main className="flex-1 overflow-auto bg-gray-50 p-6 dark:bg-neutral-900">
+                      <div className="mx-auto w-full max-w-5xl">
+                        <AccessRequests />
+                        <Outlet />
+                      </div>
+                    </main>
+                  </SidebarInset>
+                  <Walkthrough onCreateTreasury={openTreasury} />
+                </SidebarProvider>
+              </TooltipProvider>
+              <VaultGate />
+            </SpendAgentProvider>
+          </TreasuryWalletProvider>
+        </AccountDataProvider>
       </CoiGuard>
     </MobileGuard>
   )

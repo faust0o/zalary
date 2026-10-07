@@ -1,0 +1,50 @@
+query AccountMembers {
+  accountMembers {
+    id
+    name
+    username
+    role
+    isAccountOwner
+    commsPublicKey
+    hasAccountKey
+    createdAt
+  }
+}
+
+query AccessInvites {
+  accessInvites {
+    id
+    token
+    role
+    expiresAt
+  }
+}
+
+mutation CreateAccessInvite($role: AccessRole) {
+  createAccessInvite(role: $role) {
+    id
+    token
+    role
+    expiresAt
+  }
+}
+
+mutation RevokeAccessInvite($id: ID!) {
+  revokeAccessInvite(id: $id) {
+    id
+  }
+}
+
+mutation SetMemberAccess($userId: ID!, $role: AccessRole!) {
+  setMemberAccess(userId: $userId, role: $role) {
+    id
+    role
+    canEditPayroll
+  }
+}
+
+mutation RemoveAccountMember($userId: ID!) {
+  removeAccountMember(userId: $userId) {
+    id
+  }
+}

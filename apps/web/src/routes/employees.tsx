@@ -1,57 +1,35 @@
-import { useMutation, useQuery } from "@apollo/client/react"
 import { EmployeesView } from "../components/views/employees-view"
-import { CreateEmployeeDocument, DeleteEmployeeDocument, EmployeesDocument, ImportEmployeesCsvDocument, UpdateEmployeeDocument } from "../graphql/__generated__/graphql"
+import { useAccountData } from "../hooks/use-account-data"
 import { useTitle } from "../hooks/use-title"
+import {
+  createEmployee,
+  deleteEmployee,
+  parseEmployeesCsv,
+  updateEmployee,
+} from "../lib/payroll-records"
 
 export function EmployeesPage() {
   useTitle("Employees")
-  const { data, loading, refetch } = useQuery(EmployeesDocument)
-  const [createEmployee] = useMutation(CreateEmployeeDocument)
-  const [updateEmployee] = useMutation(UpdateEmployeeDocument)
-  const [deleteEmployee] = useMutation(DeleteEmployeeDocument)
-  const [importEmployeesCsv] = useMutation(ImportEmployeesCsvDocument)
-
-  const employees = (data?.employees ?? []).map((e) => ({
-    ...e,
-    title: e.title ?? null,
-  }))
+  const { employees, payrolls, canEdit, write } = useAccountData()
 
   return (
     <EmployeesView
       employees={employees}
-      loading={loading}
-      onAddEmployee={async (empData) => {
-        await createEmployee({
-          variables: {
-            name: empData.name,
-            title: empData.title,
-            walletAddress: empData.walletAddress,
-            salaryAmount: empData.salaryAmount,
-            salaryCurrency: empData.salaryCurrency,
-          },
-        })
-        refetch()
+      loading={false}
+      readOnly={!canEdit}
+      onAddEmployee={async (input) => {
+        await write({ put: [createEmployee(input)] })
       }}
-      onUpdateEmployee={async (id, empData) => {
-        await updateEmployee({
-          variables: {
-            id,
-            name: empData.name,
-            title: empData.title,
-            walletAddress: empData.walletAddress,
-            salaryAmount: empData.salaryAmount,
-            salaryCurrency: empData.salaryCurrency,
-          },
-        })
-        refetch()
+      onUpdateEmployee={async (id, input) => {
+        const employee = employees.find((e) => e.id === id)
+        if (!employee) throw new Error("Employee not found")
+        await write({ put: [updateEmployee(employee, input)] })
       }}
       onDeleteEmployee={async (id) => {
-        await deleteEmployee({ variables: { id } })
-        refetch()
+        await write(deleteEmployee(id, payrolls))
       }}
       onImportCsv={async (csvContent) => {
-        await importEmployeesCsv({ variables: { csvContent } })
-        refetch()
+        await write({ put: parseEmployeesCsv(csvContent).map(createEmployee) })
       }}
     />
   )

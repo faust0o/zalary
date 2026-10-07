@@ -47,6 +47,8 @@ export interface EmployeesViewProps {
   onUpdateEmployee?: (id: string, data: { name: string; title: string | null; walletAddress: string; salaryAmount: number; salaryCurrency: SalaryCurrency }) => Promise<void>
   onDeleteEmployee?: (id: string) => Promise<void>
   onImportCsv?: (csvContent: string) => Promise<void>
+  /** Members can look but not change anything. */
+  readOnly?: boolean
 }
 
 function CopyButton({ text }: { text: string }) {
@@ -79,6 +81,7 @@ export function EmployeesView({
   onUpdateEmployee,
   onDeleteEmployee,
   onImportCsv,
+  readOnly = false,
 }: EmployeesViewProps) {
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeData | null>(null)
@@ -165,6 +168,7 @@ export function EmployeesView({
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <h2 className="text-4xl font-light tracking-tight">Employees</h2>
+        {!readOnly && (
         <div className="flex gap-2">
           <Dialog open={csvDialogOpen} onOpenChange={(open) => { setCsvDialogOpen(open); if (!open) setCsvError(null) }}>
             <DialogTrigger asChild>
@@ -331,6 +335,7 @@ Bob Smith,zs1ghi...jkl,4500,Designer`}
           </DialogContent>
         </Dialog>
         </div>
+        )}
       </div>
 
       {loading ? (
@@ -405,10 +410,12 @@ Bob Smith,zs1ghi...jkl,4500,Designer`}
           <SheetHeader>
             <SheetTitle>Employee Details</SheetTitle>
             <SheetDescription>
-              Edit employee information or remove them.
+              {readOnly
+                ? "Members can view employees. Ask the account owner to make you a delegate to change them."
+                : "Edit employee information or remove them."}
             </SheetDescription>
           </SheetHeader>
-          <div className="space-y-4 p-6">
+          <fieldset disabled={readOnly} className="space-y-4 p-6">
             <div className="space-y-2">
               <Label htmlFor="edit-name">Name</Label>
               <Input
@@ -469,13 +476,15 @@ Bob Smith,zs1ghi...jkl,4500,Designer`}
                 className="h-14 text-center font-mono !text-3xl font-bold"
               />
             </div>
-          </div>
-          <SheetFooter>
-            <Button onClick={handleUpdate}>Save Changes</Button>
-            <Button variant="destructive" onClick={handleDelete}>
-              Remove Employee
-            </Button>
-          </SheetFooter>
+          </fieldset>
+          {!readOnly && (
+            <SheetFooter>
+              <Button onClick={handleUpdate}>Save Changes</Button>
+              <Button variant="destructive" onClick={handleDelete}>
+                Remove Employee
+              </Button>
+            </SheetFooter>
+          )}
         </SheetContent>
       </Sheet>
     </div>

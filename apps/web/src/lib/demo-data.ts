@@ -311,41 +311,139 @@ export const DEMO_PAYMENTS: DemoPayment[] = [
   },
 ]
 
-export const DEMO_WALLET_BALANCE = 42.85
+export const DEMO_TREASURY_BALANCE = 42.85
 export const DEMO_USERNAME = "demo"
 
-export interface DemoDelegate {
+export const DEMO_TREASURY = {
+  name: "Core Treasury",
+  description: "Payroll for the core team",
+  address:
+    "u1demotreasury8q3x0k5n2v7c4m9w1z6r3t8y5u2i7o4p9a6s3d8f5g2h7j4k9l6z3x8c5v2b7n4m1q8w5e2r9t6y3",
+  threshold: 2,
+}
+
+export interface DemoPerson {
   id: string
   name: string
   username: string
+  role: "MEMBER" | "DELEGATE" | null
+  isAccountOwner: boolean
+  isSigner: boolean
   createdAt: string
 }
 
-export interface DemoDelegateInvite {
-  id: string
-  token: string
-  expiresAt: string
-}
-
-export const DEMO_DELEGATES: DemoDelegate[] = [
+export const DEMO_PEOPLE: DemoPerson[] = [
   {
-    id: "demo-delegate-1",
-    name: "Maya Patel",
-    username: "maya_ops",
+    id: "demo-owner-0000000001",
+    name: "Demo Founder",
+    username: DEMO_USERNAME,
+    role: null,
+    isAccountOwner: true,
+    isSigner: true,
     createdAt: twentyDaysAgo.toISOString(),
   },
   {
-    id: "demo-delegate-2",
+    id: "demo-member-000000001",
+    name: "Maya Patel",
+    username: "maya_ops",
+    role: "MEMBER",
+    isAccountOwner: false,
+    isSigner: true,
+    createdAt: twentyDaysAgo.toISOString(),
+  },
+  {
+    id: "demo-delegate-0000001",
     name: "Jordan Reyes",
     username: "jordan_books",
+    role: "DELEGATE",
+    isAccountOwner: false,
+    isSigner: true,
     createdAt: fiveDaysAgo.toISOString(),
   },
 ]
 
-export const DEMO_DELEGATE_INVITES: DemoDelegateInvite[] = [
+export const DEMO_ACCESS_INVITES = [
   {
     id: "demo-invite-1",
-    token: "cmdemo4f8k0001x7l2p9q3r5t.Jq8vN3xR0bYzW6kT2mHs5cLf9dPgA1uE7iOy4nVtQ0",
+    token:
+      "cmdemo4f8k0001x7l2p9q3r5t-4a1f0c9e2b7d6a3f8e1c5b9d2a7f4e0c3b8d1a6f9e2c7b4d0a5f8e3c6b9d2a7f",
+    role: "DELEGATE" as const,
     expiresAt: threeDaysFromNow.toISOString(),
+  },
+]
+
+const [owner, maya, jordan] = DEMO_PEOPLE
+
+export const DEMO_PROPOSALS = [
+  {
+    id: "demo-proposal-1",
+    status: "AWAITING_APPROVALS",
+    totalZec: 31.42,
+    feeZec: 0.0004,
+    threshold: 2,
+    signerIds: [],
+    createdAt: new Date(Date.now() - 1000 * 60 * 47).toISOString(),
+    createdBy: owner,
+    approvals: [
+      {
+        id: "demo-approval-1",
+        decision: "APPROVE",
+        signedAt: null,
+        user: owner,
+      },
+    ],
+    payments: DEMO_EMPLOYEES.slice(0, 4).map((employee, i) => ({
+      id: `demo-proposal-1-payment-${i}`,
+      amountZec: [9.8, 8.1, 7.42, 6.1][i],
+      amountUsd: [3600, 2980, 2730, 2240][i],
+      employee: {
+        name: employee.name,
+        walletAddress: employee.walletAddress,
+      },
+      payroll: { name: "Core Team" },
+    })),
+  },
+  {
+    id: "demo-proposal-2",
+    status: "CONFIRMED",
+    totalZec: 21.2,
+    feeZec: 0.0003,
+    threshold: 2,
+    signerIds: [owner.id, jordan.id],
+    txid: "e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2",
+    createdAt: paymentDates[9].toISOString(),
+    createdBy: owner,
+    approvals: [
+      {
+        id: "demo-approval-2",
+        decision: "APPROVE",
+        signedAt: paymentDates[9].toISOString(),
+        user: owner,
+      },
+      {
+        id: "demo-approval-3",
+        decision: "APPROVE",
+        signedAt: paymentDates[9].toISOString(),
+        user: jordan,
+      },
+      {
+        id: "demo-approval-4",
+        decision: "REJECT",
+        signedAt: null,
+        user: maya,
+      },
+    ],
+    payments: [
+      {
+        id: "demo-proposal-2-payment-0",
+        amountZec: 21.2,
+        amountUsd: 7800,
+        employee: {
+          name: "Carol Thompson",
+          walletAddress: DEMO_EMPLOYEES[2].walletAddress,
+        },
+        payroll: { name: "Core Team" },
+      },
+    ],
   },
 ]

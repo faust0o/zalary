@@ -3,7 +3,7 @@ import { useDemo } from "../../components/demo-context"
 import { PayrollsView } from "../../components/views/payrolls-view"
 import { useTitle } from "../../hooks/use-title"
 import { useZecPrice } from "../../hooks/use-zec-price"
-import { DEMO_PAYROLLS, DEMO_WALLET_BALANCE } from "../../lib/demo-data"
+import { DEMO_PAYROLLS, DEMO_TREASURY_BALANCE } from "../../lib/demo-data"
 
 export function DemoPayrollsPage() {
   useTitle("Payrolls")
@@ -14,7 +14,7 @@ export function DemoPayrollsPage() {
   return (
     <PayrollsView
       payrolls={DEMO_PAYROLLS}
-      walletBalance={DEMO_WALLET_BALANCE}
+      treasuryBalance={DEMO_TREASURY_BALANCE}
       zecPrice={zecPrice}
       loading={false}
       onDisburse={() => promptLogin()}

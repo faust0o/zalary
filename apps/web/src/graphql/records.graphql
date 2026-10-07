@@ -1,0 +1,56 @@
+query AccountKey {
+  me {
+    id
+    commsPublicKey
+    isAccountOwner
+    canEditPayroll
+    owner {
+      id
+      username
+    }
+  }
+  accountKey {
+    sealedKey
+    sealedBy
+    exists
+  }
+}
+
+mutation CreateAccountKey($sealedKey: String!) {
+  createAccountKey(sealedKey: $sealedKey) {
+    sealedKey
+    sealedBy
+    exists
+  }
+}
+
+mutation ShareAccountKey($userId: ID!, $sealedKey: String!) {
+  shareAccountKey(userId: $userId, sealedKey: $sealedKey) {
+    id
+    hasAccountKey
+  }
+}
+
+query SealedRecords {
+  sealedRecords {
+    id
+    data
+    version
+  }
+}
+
+mutation WriteSealedRecords(
+  $writes: [SealedRecordWrite!]!
+  $deletes: [SealedRecordDelete!]
+) {
+  writeSealedRecords(writes: $writes, deletes: $deletes) {
+    id
+    data
+    version
+  }
+}
+
+fragment SealedRecordVersion on SealedRecord {
+  id
+  version
+}

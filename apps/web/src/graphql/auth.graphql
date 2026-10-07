@@ -22,16 +22,17 @@ query Me {
   me {
     id
     username
+    name
   }
 }
 
-mutation AcceptDelegateInvite(
+mutation AcceptAccessInvite(
   $token: String!
   $name: String!
   $username: String!
   $password: String!
 ) {
-  acceptDelegateInvite(
+  acceptAccessInvite(
     token: $token
     name: $name
     username: $username

@@ -1,0 +1,43 @@
+query MyPasskeys {
+  me {
+    id
+    commsPublicKey
+  }
+  myPasskeys {
+    id
+    credentialId
+    prfSalt
+    wrappedVaultKey
+    transports
+    createdAt
+  }
+}
+
+mutation RegisterPasskey(
+  $credentialId: String!
+  $prfSalt: String!
+  $wrappedVaultKey: String!
+  $commsPublicKey: String!
+  $transports: [String!]
+) {
+  registerPasskey(
+    credentialId: $credentialId
+    prfSalt: $prfSalt
+    wrappedVaultKey: $wrappedVaultKey
+    commsPublicKey: $commsPublicKey
+    transports: $transports
+  ) {
+    id
+    credentialId
+    prfSalt
+    wrappedVaultKey
+    transports
+    createdAt
+  }
+}
+
+mutation RemovePasskey($id: ID!) {
+  removePasskey(id: $id) {
+    id
+  }
+}

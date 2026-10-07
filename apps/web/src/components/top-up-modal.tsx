@@ -22,7 +22,7 @@ import {
 } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
 import { useEffect, useRef, useState } from "react"
-import { useZcashWallet } from "../hooks/use-zcash-wallet"
+import { useTreasuryWallet } from "../hooks/use-treasury-wallet"
 import {
   FINAL_STATUSES,
   SOL,
@@ -103,7 +103,7 @@ export function TopUpModal({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
-  const { address, addressError, sync } = useZcashWallet()
+  const { address, addressError, sync } = useTreasuryWallet()
 
   const [amount, setAmount] = useState("")
   const [refundTo, setRefundTo] = useState("")
@@ -134,7 +134,7 @@ export function TopUpModal({
   const settled =
     status && FINAL_STATUSES.includes(status.status) ? status : null
 
-  // Resume a swap that was started earlier for this wallet
+  // Resume a swap that was started earlier for this treasury
   useEffect(() => {
     if (!address) return
     const saved = loadActiveSwap()
@@ -287,23 +287,19 @@ export function TopUpModal({
               <DialogTitle>Top up with {asset.symbol}</DialogTitle>
               <DialogDescription>
                 Swap {asset.symbol} for shielded ZEC through NEAR Intents. It
-                arrives straight in your Zcash wallet.
+                arrives straight in your treasury.
               </DialogDescription>
             </DialogHeader>
 
             {addressError ? (
               <div className="flex items-start gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
                 <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-                <p>
-                  Couldn't derive a receiving address: {addressError} You can
-                  update your viewing key in Settings.
-                </p>
+                <p>Couldn't get the treasury's address: {addressError}</p>
               </div>
             ) : !address ? (
               <div className="flex flex-col items-center py-10">
-                <div className="size-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                <p className="mt-4 text-sm text-muted-foreground">
-                  Preparing your shielded address...
+                <p className="text-sm text-muted-foreground">
+                  Top-ups go to your treasury. Set one up first.
                 </p>
               </div>
             ) : (

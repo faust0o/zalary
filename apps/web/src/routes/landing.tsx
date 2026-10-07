@@ -19,6 +19,7 @@ import {
 
 import { Navigate, useNavigate } from "react-router-dom"
 import { useTheme } from "../components/theme-provider"
+import { Wordmark } from "../components/wordmark"
 import { useAuth } from "../hooks/use-auth"
 
 const MOBILE_BREAKPOINT = 768
@@ -47,11 +48,7 @@ export function LandingPage() {
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
-        <img
-          src="/zalary-logo.svg"
-          alt="Zalary"
-          className="size-24 animate-pulse"
-        />
+        <Wordmark className="h-10 animate-pulse" />
       </div>
     )
   }
@@ -62,9 +59,8 @@ export function LandingPage() {
     <div className="min-h-screen bg-gradient-to-br from-primary/20 to-neutral-100 text-foreground dark:to-neutral-900">
       {/* Nav */}
       <nav className="fixed inset-x-0 top-0 z-50 flex h-16 items-center justify-between border-b border-border/50 bg-background/85 px-6 backdrop-blur-xl md:px-12">
-        <a href="/" className="flex items-center gap-2.5">
-          <img src="/zalary-logo.svg" alt="Zalary" className="size-8" />
-          <span className="text-lg font-medium tracking-wide">Zalary</span>
+        <a href="/">
+          <Wordmark className="h-6" />
         </a>
         <div className="flex items-center gap-1">
           <div className="hidden items-center rounded-full border border-border p-0.5 md:flex">
@@ -368,8 +364,8 @@ export function LandingPage() {
               },
               {
                 num: "03",
-                title: "Scan, pay, done",
-                body: "When it's time to pay, Zalary generates a QR code for each recipient. Scan them with your wallet, and the payments settle through Zcash's shielded pool.",
+                title: "Approve, pay, done",
+                body: "When it's time to pay, Zalary bundles every salary into one transaction from your multisig treasury. Once enough of your team approves, it settles through Zcash's shielded pool.",
               },
             ].map((step) => (
               <div
@@ -426,7 +422,7 @@ export function LandingPage() {
                 value: "non-custodial",
                 Icon: EyeOff,
                 title: "Non-custodial data model",
-                body: "Zalary stores your username, a password hash, and the viewing key you provide. The viewing key is read-only and cannot spend funds.",
+                body: "Your treasury's key is created in pieces, one per signer, and each piece is sealed by its owner's passkey. Zalary stores only ciphertext it can't open, so it can neither see nor move your funds.",
               },
               {
                 value: "shielded",
@@ -494,8 +490,7 @@ export function LandingPage() {
                 </Button>
               </div>
               <p className="mt-7 text-xs text-muted-foreground">
-                Free to start. No wallet connection needed until you're ready to
-                pay.
+                Free to start. No treasury needed until you're ready to pay.
               </p>
             </>
           )}
@@ -505,7 +500,8 @@ export function LandingPage() {
       {/* Footer */}
       <footer className="flex items-center justify-between border-t bg-background px-6 py-6 md:px-12">
         <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-          Zalary &copy; {new Date().getFullYear()}
+          <Wordmark className="h-4" />
+          &copy; {new Date().getFullYear()}
         </div>
         <div className="flex gap-6 text-xs text-muted-foreground">
           <a href="/login" className="transition-colors hover:text-foreground">

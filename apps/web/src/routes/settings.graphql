@@ -7,19 +7,8 @@ query MeSettings {
       id
       username
     }
-    zcashViewingKey
-    walletBirthdayHeight
-  }
-}
-
-mutation UpdateUser($zcashViewingKey: String, $walletBirthdayHeight: Int) {
-  updateUser(
-    zcashViewingKey: $zcashViewingKey
-    walletBirthdayHeight: $walletBirthdayHeight
-  ) {
-    id
-    zcashViewingKey
-    walletBirthdayHeight
+    isAccountOwner
+    role
   }
 }
 
@@ -33,6 +22,6 @@ mutation ChangePassword($currentPassword: String!, $newPassword: String!) {
   }
 }
 
-mutation DeleteAccount {
-  deleteAccount
+mutation DeleteAccount($treasuryEmpty: Boolean) {
+  deleteAccount(treasuryEmpty: $treasuryEmpty)
 }

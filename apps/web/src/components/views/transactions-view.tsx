@@ -28,7 +28,7 @@ export interface PaymentData {
   amountZec: number
   memo: string
   status: string
-  txHash: string | null
+  txHash?: string | null
   createdAt: string
   employee: { name: string }
   payroll: { name: string }
@@ -38,6 +38,8 @@ export interface TransactionsViewProps {
   payments: PaymentData[]
   loading: boolean
   resyncButton?: React.ReactNode
+  /** Inside the treasury page: no page heading of its own. */
+  embedded?: boolean
 }
 
 function truncateHash(hash: string): string {
@@ -49,6 +51,7 @@ export function TransactionsView({
   payments: allPayments,
   loading,
   resyncButton,
+  embedded = false,
 }: TransactionsViewProps) {
   const [statusFilter, setStatusFilter] = useState("all")
   const [payrollFilter, setPayrollFilter] = useState("all")
@@ -96,15 +99,19 @@ export function TransactionsView({
 
   return (
     <div className="space-y-8">
-      <div className="flex items-start justify-between">
-        <div>
-          <h2 className="text-4xl font-light tracking-tight">
-            Transaction History
-          </h2>
-          <p className="text-muted-foreground mt-1 text-sm">
-            All on-chain payroll executions
-          </p>
-        </div>
+      <div
+        className={`flex items-start ${embedded ? "justify-end" : "justify-between"}`}
+      >
+        {!embedded && (
+          <div>
+            <h2 className="text-4xl font-light tracking-tight">
+              Transaction History
+            </h2>
+            <p className="text-muted-foreground mt-1 text-sm">
+              All on-chain payroll executions
+            </p>
+          </div>
+        )}
         <div className="flex items-center gap-2">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="!h-10 text-md w-[140px]">
@@ -205,25 +212,25 @@ export function TransactionsView({
                 {payments.length} Transaction{payments.length !== 1 ? "s" : ""}
               </span>
             </div>
-            <Table className="table-fixed">
+            <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead className="text-muted-foreground w-[150px] text-xs font-semibold uppercase tracking-wider">
+                  <TableHead className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
                     Transaction ID
                   </TableHead>
-                  <TableHead className="text-muted-foreground w-[100px] text-xs font-semibold uppercase tracking-wider">
+                  <TableHead className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
                     Status
                   </TableHead>
-                  <TableHead className="text-muted-foreground w-[170px] text-xs font-semibold uppercase tracking-wider">
+                  <TableHead className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
                     Recipient
                   </TableHead>
-                  <TableHead className="text-muted-foreground w-[150px] text-xs font-semibold uppercase tracking-wider">
+                  <TableHead className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
                     Payroll
                   </TableHead>
-                  <TableHead className="text-muted-foreground w-[160px] text-right text-xs font-semibold uppercase tracking-wider">
+                  <TableHead className="text-muted-foreground text-right text-xs font-semibold uppercase tracking-wider">
                     Amount
                   </TableHead>
-                  <TableHead className="text-muted-foreground w-[120px] text-right text-xs font-semibold uppercase tracking-wider">
+                  <TableHead className="text-muted-foreground text-right text-xs font-semibold uppercase tracking-wider">
                     Date
                   </TableHead>
                 </TableRow>

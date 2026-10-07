@@ -1,11 +1,7 @@
 query WalkthroughStatus {
   me {
     id
-    needsWalkthrough
-    hasEmployees
-    hasPayrolls
-    hasPayrollRun
-    hasWallet
+    hasTreasury
     owner {
       id
     }

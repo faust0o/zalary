@@ -1,21 +1,21 @@
-import { createBrowserRouter } from "react-router-dom"
+import { Navigate, createBrowserRouter } from "react-router-dom"
+import { RequireAccountData } from "../components/account-access"
 import { Layout } from "./_layout"
 import { DemoLayout } from "./_demo-layout"
 import { DashboardPage } from "./dashboard"
-import { DelegationsPage } from "./delegations"
 import { DemoDashboardPage } from "./demo/dashboard"
-import { DemoDelegationsPage } from "./demo/delegations"
 import { DemoEmployeesPage } from "./demo/employees"
 import { DemoPayrollsPage } from "./demo/payrolls"
-import { DemoTransactionsPage } from "./demo/transactions"
+import { DemoTreasuryPage } from "./demo/treasury"
 import { EmployeesPage } from "./employees"
 import { InvitePage } from "./invite"
+import { JoinTreasuryPage } from "./join"
 import { LandingPage } from "./landing"
 import { LoginPage } from "./login"
 import { PayrollDetailPage } from "./payroll-detail"
 import { PayrollsPage } from "./payrolls"
 import { SettingsPage } from "./settings"
-import { TransactionsPage } from "./transactions"
+import { TreasuryPage } from "./treasury"
 
 export const router = createBrowserRouter([
   {
@@ -31,26 +31,73 @@ export const router = createBrowserRouter([
     element: <InvitePage />,
   },
   {
+    path: "/join/:token",
+    element: <JoinTreasuryPage />,
+  },
+  {
     path: "/demo",
     element: <DemoLayout />,
     children: [
       { path: "dashboard", element: <DemoDashboardPage /> },
       { path: "payrolls", element: <DemoPayrollsPage /> },
       { path: "employees", element: <DemoEmployeesPage /> },
-      { path: "transactions", element: <DemoTransactionsPage /> },
-      { path: "delegations", element: <DemoDelegationsPage /> },
+      { path: "treasury", element: <DemoTreasuryPage /> },
+      {
+        path: "transactions",
+        element: <Navigate to="/demo/treasury" replace />,
+      },
+      {
+        path: "delegations",
+        element: <Navigate to="/demo/treasury" replace />,
+      },
     ],
   },
   {
     path: "/",
     element: <Layout />,
     children: [
-      { path: "dashboard", element: <DashboardPage /> },
-      { path: "payrolls", element: <PayrollsPage /> },
-      { path: "payrolls/:id", element: <PayrollDetailPage /> },
-      { path: "employees", element: <EmployeesPage /> },
-      { path: "transactions", element: <TransactionsPage /> },
-      { path: "delegations", element: <DelegationsPage /> },
+      {
+        path: "dashboard",
+        element: (
+          <RequireAccountData>
+            <DashboardPage />
+          </RequireAccountData>
+        ),
+      },
+      {
+        path: "payrolls",
+        element: (
+          <RequireAccountData>
+            <PayrollsPage />
+          </RequireAccountData>
+        ),
+      },
+      {
+        path: "payrolls/:id",
+        element: (
+          <RequireAccountData>
+            <PayrollDetailPage />
+          </RequireAccountData>
+        ),
+      },
+      {
+        path: "employees",
+        element: (
+          <RequireAccountData>
+            <EmployeesPage />
+          </RequireAccountData>
+        ),
+      },
+      { path: "treasury", element: <TreasuryPage /> },
+      // Transactions and delegations moved into the treasury
+      {
+        path: "transactions",
+        element: <Navigate to="/treasury?tab=transactions" replace />,
+      },
+      {
+        path: "delegations",
+        element: <Navigate to="/treasury?tab=members" replace />,
+      },
       { path: "settings", element: <SettingsPage /> },
     ],
   },

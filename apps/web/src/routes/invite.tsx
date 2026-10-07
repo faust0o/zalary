@@ -11,7 +11,8 @@ import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
 import { useState, type FormEvent, type ReactNode } from "react"
 import { Link, Navigate, useParams } from "react-router-dom"
-import { DelegateInvitePreviewDocument } from "../graphql/__generated__/graphql"
+import { Wordmark } from "../components/wordmark"
+import { AccessInvitePreviewDocument } from "../graphql/__generated__/graphql"
 import { useAuth } from "../hooks/use-auth"
 import { useTitle } from "../hooks/use-title"
 
@@ -34,11 +35,7 @@ function InviteShell({
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/20 to-neutral-100 p-4 dark:to-neutral-900">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <img
-            src="/zalary-logo.svg"
-            alt="Zalary"
-            className="mx-auto mb-2 h-12"
-          />
+          <Wordmark className="mx-auto mb-3 h-7" />
           <CardTitle className="text-2xl font-bold">{title}</CardTitle>
           <CardDescription>{description}</CardDescription>
         </CardHeader>
@@ -53,7 +50,7 @@ export function InvitePage() {
   const { token = "" } = useParams()
   const { user, loading: authLoading, acceptInvite, logout } = useAuth()
   const { data, loading: previewLoading } = useQuery(
-    DelegateInvitePreviewDocument,
+    AccessInvitePreviewDocument,
     { variables: { token }, fetchPolicy: "network-only" }
   )
   const [name, setName] = useState("")
@@ -64,7 +61,7 @@ export function InvitePage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [accepted, setAccepted] = useState(false)
 
-  const invite = data?.delegateInvite
+  const invite = data?.accessInvite
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -153,9 +150,11 @@ export function InvitePage() {
       title={`Join @${invite.ownerUsername}`}
       description={
         <>
-          @{invite.ownerUsername} invited you to help run their payroll. You'll
-          be able to view and edit their employees and payrolls and see their
-          payment history. Expires{" "}
+          @{invite.ownerUsername} invited you to{" "}
+          {invite.role === "DELEGATE"
+            ? "help run their payroll. You'll be able to view and edit their employees and payrolls and see their payment history."
+            : "their payroll as a member. You'll be able to view their employees, payrolls and payment history."}{" "}
+          Expires{" "}
           {new Date(invite.expiresAt).toLocaleDateString(undefined, {
             month: "short",
             day: "numeric",

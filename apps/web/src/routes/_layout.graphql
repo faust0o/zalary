@@ -1,10 +1,35 @@
 query MeLayout {
   me {
     id
-    zcashViewingKey
-    walletBirthdayHeight
+    username
+    name
+    isAccountOwner
+    role
+    canEditPayroll
+    hasPasskey
+    commsPublicKey
     owner {
       id
+      username
+    }
+  }
+  treasury {
+    id
+    status
+    address
+    changeAddress
+    birthdayHeight
+    encryptedViewingKey
+    isCoordinator
+    sealedBalance
+    coordinator {
+      id
+      commsPublicKey
+    }
+    myMembership {
+      id
+      encryptedKeyPackage
+      viewingKeyMessage
     }
   }
 }

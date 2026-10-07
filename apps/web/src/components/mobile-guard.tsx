@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { Wordmark } from "./wordmark"
 
 const MOBILE_BREAKPOINT = 768
 
@@ -23,7 +24,7 @@ export function MobileGuard({ children }: { children: React.ReactNode }) {
   if (isMobile) {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-4 px-8 text-center">
-        <img src="/zalary-logo.svg" alt="Zalary" className="size-16" />
+        <Wordmark className="h-10" />
         <h1 className="text-2xl font-semibold">Desktop Only</h1>
         <p className="text-muted-foreground">
           Zalary is currently only available on desktop. Please visit us on a

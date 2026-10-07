@@ -118,7 +118,7 @@ export function CoiGuard({ children }: { children: React.ReactNode }) {
           <DialogHeader>
             <DialogTitle>Setting up Zalary</DialogTitle>
             <DialogDescription>
-              Preparing your browser for secure wallet operations.
+              Preparing your browser for secure treasury operations.
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col items-center gap-4 py-6">

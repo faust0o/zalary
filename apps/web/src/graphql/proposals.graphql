@@ -1,0 +1,132 @@
+fragment SpendProposalFields on SpendProposal {
+  id
+  status
+  sealed
+  sealedTxid
+  frostSessionId
+  signerIds
+  error
+  progress
+  progressAt
+  threshold
+  expiresAt
+  broadcastAt
+  confirmedAt
+  createdAt
+  createdBy {
+    id
+    name
+    username
+  }
+  approvals {
+    id
+    decision
+    signedAt
+    createdAt
+    user {
+      id
+      name
+      username
+    }
+  }
+  myApproval {
+    id
+    decision
+    signedAt
+  }
+}
+
+query SpendProposals($open: Boolean) {
+  spendProposals(open: $open) {
+    ...SpendProposalFields
+  }
+}
+
+# The PCZT is large, so it's only fetched to act on one spend.
+query SpendProposalPczt($id: ID!) {
+  spendProposal(id: $id) {
+    id
+    sealedPczt
+  }
+}
+
+mutation CreateSpendProposal(
+  $id: ID!
+  $sealed: String!
+  $sealedPczt: String!
+  $frostSessionId: String!
+) {
+  createSpendProposal(
+    id: $id
+    sealed: $sealed
+    sealedPczt: $sealedPczt
+    frostSessionId: $frostSessionId
+  ) {
+    ...SpendProposalFields
+  }
+}
+
+mutation ApproveSpendProposal($id: ID!) {
+  approveSpendProposal(id: $id) {
+    id
+  }
+}
+
+mutation RejectSpendProposal($id: ID!) {
+  rejectSpendProposal(id: $id) {
+    id
+    status
+  }
+}
+
+mutation SetProposalSigners($id: ID!, $userIds: [ID!]!) {
+  setProposalSigners(id: $id, userIds: $userIds) {
+    id
+    status
+    signerIds
+  }
+}
+
+mutation MarkProposalSigned($id: ID!) {
+  markProposalSigned(id: $id) {
+    id
+  }
+}
+
+mutation MarkProposalBroadcast($id: ID!, $sealedTxid: String!) {
+  markProposalBroadcast(id: $id, sealedTxid: $sealedTxid) {
+    id
+    status
+    sealedTxid
+  }
+}
+
+mutation ReportProposalProblem($id: ID!, $problem: String) {
+  reportProposalProblem(id: $id, problem: $problem) {
+    id
+    error
+  }
+}
+
+mutation ReportProposalProgress($id: ID!, $progress: String) {
+  reportProposalProgress(id: $id, progress: $progress) {
+    id
+    progress
+    progressAt
+  }
+}
+
+mutation MarkProposalConfirmed($id: ID!) {
+  markProposalConfirmed(id: $id) {
+    id
+    status
+  }
+}
+
+mutation CancelSpendProposal($id: ID!, $reason: String) {
+  cancelSpendProposal(id: $id, reason: $reason) {
+    id
+    status
+    error
+  }
+}

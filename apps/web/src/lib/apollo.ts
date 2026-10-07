@@ -19,4 +19,11 @@ const authLink = setContext((_, { headers }) => {
 export const apolloClient = new ApolloClient({
   link: authLink.concat(httpLink),
   cache: new InMemoryCache(),
+  defaultOptions: {
+    watchQuery: {
+      // Polls and refetches swap in new data without flipping `loading`, so
+      // views only show their loading state while they have nothing yet.
+      notifyOnNetworkStatusChange: false,
+    },
+  },
 })

@@ -8,12 +8,13 @@ import {
 } from "react"
 import { createElement } from "react"
 import {
-  AcceptDelegateInviteDocument,
+  AcceptAccessInviteDocument,
   LoginDocument,
   MeDocument,
   RegisterDocument,
 } from "../graphql/__generated__/graphql"
 import { apolloClient } from "../lib/apollo"
+import { lockVault } from "../lib/vault"
 import { clearWalletState } from "../lib/zcash-wallet"
 import {
   clearSessionToken,
@@ -24,6 +25,7 @@ import {
 interface User {
   id: string
   username: string
+  name?: string | null
 }
 
 interface AuthContextType {
@@ -37,6 +39,8 @@ interface AuthContextType {
     username: string,
     password: string
   ) => Promise<void>
+  /** Sign in with a session another mutation issued (e.g. a treasury invite). */
+  adoptSession: (token: string, user: User) => Promise<void>
   logout: () => Promise<void>
 }
 
@@ -107,17 +111,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const acceptInvite = useCallback(
     async (token: string, name: string, username: string, password: string) => {
       const result = await apolloClient.mutate({
-        mutation: AcceptDelegateInviteDocument,
+        mutation: AcceptAccessInviteDocument,
         variables: { token, name, username, password },
       })
-      const payload = result.data?.acceptDelegateInvite
+      const payload = result.data?.acceptAccessInvite
       if (!payload) throw new Error("Could not accept invite")
       setUser(await establishSession(payload.token, payload.user))
     },
     []
   )
 
+  const adoptSession = useCallback(async (token: string, next: User) => {
+    lockVault()
+    setUser(await establishSession(token, next))
+  }, [])
+
   const logout = useCallback(async () => {
+    lockVault()
     await clearWalletState()
     await apolloClient.clearStore()
     clearSessionToken()
@@ -133,6 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         register,
         acceptInvite,
+        adoptSession,
         logout,
       },
     },

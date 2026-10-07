@@ -11,6 +11,8 @@ const config: CodegenConfig = {
       preset: "client",
       presetConfig: {
         gqlTagName: "gql",
+        // Fragments are shared field lists here, not data-masking boundaries.
+        fragmentMasking: false,
       },
       config: {
         useTypeImports: true,

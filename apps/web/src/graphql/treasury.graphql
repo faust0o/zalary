@@ -1,0 +1,206 @@
+fragment TreasuryMemberFields on TreasuryMember {
+  id
+  identifier
+  hasKeyShare
+  encryptedKeyPackage
+  viewingKeyMessage
+  hasViewingKey
+  groupPublicKey
+  isCoordinator
+  online
+  ready
+  joinedAt
+  user {
+    id
+    name
+    username
+    commsPublicKey
+  }
+}
+
+fragment TreasuryFields on Treasury {
+  id
+  name
+  description
+  threshold
+  status
+  dkgSessionId
+  keygenStartedAt
+  groupPublicKey
+  publicKeyPackage
+  address
+  changeAddress
+  birthdayHeight
+  encryptedViewingKey
+  sealedBalance
+  isCoordinator
+  signerCount
+  createdAt
+  coordinator {
+    id
+    name
+    username
+    commsPublicKey
+  }
+  members {
+    ...TreasuryMemberFields
+  }
+  myMembership {
+    ...TreasuryMemberFields
+  }
+  invites {
+    id
+    token
+    expiresAt
+    createdAt
+  }
+}
+
+query Treasury {
+  treasury {
+    ...TreasuryFields
+  }
+}
+
+mutation CreateTreasury($name: String!, $description: String) {
+  createTreasury(name: $name, description: $description) {
+    ...TreasuryFields
+  }
+}
+
+mutation UpdateTreasury(
+  $name: String
+  $description: String
+  $threshold: Int
+) {
+  updateTreasury(name: $name, description: $description, threshold: $threshold) {
+    ...TreasuryFields
+  }
+}
+
+mutation DeleteTreasury {
+  deleteTreasury
+}
+
+mutation CreateTreasuryInvite {
+  createTreasuryInvite {
+    id
+    token
+    expiresAt
+    createdAt
+  }
+}
+
+mutation RevokeTreasuryInvite($id: ID!) {
+  revokeTreasuryInvite(id: $id) {
+    id
+  }
+}
+
+mutation RemoveTreasuryMember($id: ID!) {
+  removeTreasuryMember(id: $id) {
+    id
+  }
+}
+
+mutation TreasuryHeartbeat($ready: Boolean!) {
+  treasuryHeartbeat(ready: $ready) {
+    id
+    online
+    ready
+  }
+}
+
+mutation StartTreasuryKeygen($dkgSessionId: String!) {
+  startTreasuryKeygen(dkgSessionId: $dkgSessionId) {
+    ...TreasuryFields
+  }
+}
+
+mutation SubmitKeygenResult(
+  $dkgSessionId: String!
+  $identifier: String!
+  $encryptedKeyPackage: String!
+  $publicKeyPackage: String!
+  $groupPublicKey: String!
+) {
+  submitKeygenResult(
+    dkgSessionId: $dkgSessionId
+    identifier: $identifier
+    encryptedKeyPackage: $encryptedKeyPackage
+    publicKeyPackage: $publicKeyPackage
+    groupPublicKey: $groupPublicKey
+  ) {
+    ...TreasuryMemberFields
+  }
+}
+
+mutation FinalizeTreasury(
+  $address: String!
+  $changeAddress: String!
+  $encryptedViewingKey: String!
+  $viewingKeyMessages: [ViewingKeyMessageInput!]!
+  $birthdayHeight: Int!
+) {
+  finalizeTreasury(
+    address: $address
+    changeAddress: $changeAddress
+    encryptedViewingKey: $encryptedViewingKey
+    viewingKeyMessages: $viewingKeyMessages
+    birthdayHeight: $birthdayHeight
+  ) {
+    ...TreasuryFields
+  }
+}
+
+mutation ShareTreasuryViewingKey(
+  $viewingKeyMessages: [ViewingKeyMessageInput!]!
+) {
+  shareTreasuryViewingKey(viewingKeyMessages: $viewingKeyMessages) {
+    ...TreasuryFields
+  }
+}
+
+mutation ResetTreasuryKeygen {
+  resetTreasuryKeygen {
+    ...TreasuryFields
+  }
+}
+
+mutation ReportTreasuryBalance($sealedBalance: String!) {
+  reportTreasuryBalance(sealedBalance: $sealedBalance) {
+    id
+    sealedBalance
+  }
+}
+
+query TreasuryInvitePreview($token: String!) {
+  treasuryInvite(token: $token) {
+    treasuryName
+    treasuryDescription
+    ownerUsername
+    threshold
+    memberCount
+    expiresAt
+  }
+}
+
+mutation AcceptTreasuryInvite(
+  $token: String!
+  $name: String
+  $username: String
+  $password: String
+) {
+  acceptTreasuryInvite(
+    token: $token
+    name: $name
+    username: $username
+    password: $password
+  ) {
+    token
+    user {
+      id
+      username
+    }
+  }
+}
