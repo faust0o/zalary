@@ -302,8 +302,13 @@ export const acceptTreasuryInvite = mutationField("acceptTreasuryInvite", {
               throw new GraphQLError("You're already in this treasury.")
             }
             if (user.ownerId !== accountId) {
+              const theirTreasury = await tx.treasury.findUnique({
+                where: { accountId: user.ownerId ?? user.id },
+              })
               throw new GraphQLError(
-                "You're signed in to a different account. Log out to join with a new login."
+                theirTreasury
+                  ? "Your account is already connected to a treasury. You cannot join multiple treasuries."
+                  : "You're signed in to a different account. Log out to join with a new login."
               )
             }
           } else {
