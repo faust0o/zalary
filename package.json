@@ -2,9 +2,13 @@
   "name": "zalary",
   "version": "0.0.1",
   "private": true,
+  "scripts": {
+    "dev": "node scripts/dev.mjs"
+  },
   "devDependencies": {
     "prettier": "^3.8.1",
     "prettier-plugin-tailwindcss": "^0.7.2",
+    "railway": "^3.13.0",
     "typescript": "5.9.3"
   },
   "packageManager": "bun@1.2.0",

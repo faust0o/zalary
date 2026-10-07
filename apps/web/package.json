@@ -7,6 +7,7 @@
     "dev": "graphql-codegen --config codegen.ts --watch & vite",
     "dev:vite": "vite",
     "build": "tsc -b && vite build",
+    "build:watch": "vite build --watch --minify false --sourcemap",
     "build:full": "./build.sh",
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
