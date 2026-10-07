@@ -7,124 +7,256 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+/// What someone with access to another user's account may do there.
+enum AccessRole {
+  /// Read-only on employees and payrolls. Treasury signers start out here.
+  MEMBER
+  /// Can also edit employees and payrolls.
+  DELEGATE
+}
+
 model User {
-  id                   String           @id @default(cuid())
-  username             String           @unique
-  name                 String?
-  passwordHash         String
-  tokenVersion         Int              @default(0)
-  zcashViewingKey      String?
-  walletBirthdayHeight Int?
-  /// Set for delegates: the account whose payroll data this user manages.
-  ownerId              String?
-  owner                User?            @relation("Delegates", fields: [ownerId], references: [id], onDelete: Cascade)
-  delegates            User[]           @relation("Delegates")
-  delegateInvites      DelegateInvite[]
-  employees            Employee[]
-  payrolls             Payroll[]
-  createdAt            DateTime         @default(now())
-  updatedAt            DateTime         @updatedAt
+  id                  String             @id @default(cuid())
+  username            String             @unique
+  name                String?
+  passwordHash        String
+  tokenVersion        Int                @default(0)
+  /// Set for members and delegates: the account whose payroll data this user
+  /// works in.
+  ownerId             String?
+  owner               User?              @relation("Delegates", fields: [ownerId], references: [id], onDelete: Cascade)
+  delegates           User[]             @relation("Delegates")
+  /// Only meaningful while ownerId is set.
+  role                AccessRole         @default(DELEGATE)
+  /// The user's X25519 public key. Its private half is derived from the
+  /// user's passkey vault, so it is the same on every device and never leaves
+  /// the browser. Their browser uses it for FROST messages through frostd, and
+  /// others use it to share data with them.
+  commsPublicKey      String?            @unique
+  /// The account's data key, sealed to this user's comms key by someone who
+  /// already held it (a hex Noise_K message). Null until it's shared with them.
+  sealedAccountKey    String?
+  /// The comms key of whoever sealed it, which authenticates the message.
+  accountKeySealedBy  String?
+  passkeys            Passkey[]
+  delegateInvites     DelegateInvite[]
+  treasury            Treasury?          @relation("TreasuryAccount")
+  treasuryMemberships TreasuryMember[]
+  treasuryInvites     TreasuryInvite[]
+  proposedSpends      SpendProposal[]
+  proposalApprovals   ProposalApproval[]
+  sealedRecords       SealedRecord[]
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
 
   @@index([ownerId])
+}
+
+/// A passkey that unlocks its user's vault. The vault key is random and
+/// wrapped client-side with a key derived from the passkey's WebAuthn PRF
+/// output, so the server can store it but never open it. Everything secret the
+/// server keeps for a user (key shares, the treasury viewing key) is encrypted
+/// under that vault key.
+model Passkey {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// base64url WebAuthn credential id.
+  credentialId    String   @unique
+  /// base64url salt evaluated through the PRF extension.
+  prfSalt         String
+  /// base64 IV + AES-GCM ciphertext of the vault key.
+  wrappedVaultKey String
+  /// How the authenticator can be reached ("internal", "hybrid", "usb"…),
+  /// handed back when asking for it so browsers pick the right channel.
+  transports      String[] @default([])
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
 }
 
 /// Invite links carry the id plus an HMAC of it (see src/auth/invite.ts), so
-/// nothing secret is stored here.
+/// nothing secret is stored here. Each one creates one account with `role`.
 model DelegateInvite {
-  id        String   @id @default(cuid())
+  id        String     @id @default(cuid())
   ownerId   String
-  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  owner     User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  role      AccessRole @default(DELEGATE)
   expiresAt DateTime
-  createdAt DateTime @default(now())
+  createdAt DateTime   @default(now())
 
   @@index([ownerId])
 }
 
-enum SalaryCurrency {
-  USD
-  ZEC
+enum TreasuryStatus {
+  /// Collecting members and settings.
+  DRAFT
+  /// The key ceremony (FROST DKG) is running.
+  KEYGEN
+  /// Keys exist and the treasury can receive and spend.
+  ACTIVE
 }
 
-model Employee {
-  id             String            @id @default(cuid())
-  name           String
-  title          String?
-  walletAddress  String
-  walletVerified Boolean           @default(false)
-  salaryAmount   Float
-  salaryCurrency SalaryCurrency    @default(USD)
-  userId         String
-  user           User              @relation(fields: [userId], references: [id])
-  payrolls       PayrollEmployee[]
-  payments       Payment[]
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
+/// An account's multisig treasury. Its spend authority is a FROST group: every
+/// member holds a share and no full spending key ever exists.
+model Treasury {
+  id                  String           @id @default(cuid())
+  /// The account that owns the treasury. Its owner coordinates key ceremonies
+  /// and spends, and is the only one holding the viewing key.
+  accountId           String           @unique
+  account             User             @relation("TreasuryAccount", fields: [accountId], references: [id], onDelete: Cascade)
+  name                String
+  description         String?
+  threshold           Int              @default(2)
+  status              TreasuryStatus   @default(DRAFT)
+  /// frostd session of the running key ceremony.
+  dkgSessionId        String?
+  keygenStartedAt     DateTime?
+  /// Hex FROST group verifying key, which is the Orchard `ak`.
+  groupPublicKey      String?
+  /// serde_json frost PublicKeyPackage. Public.
+  publicKeyPackage    String?
+  /// Unified address (Orchard receiver only).
+  address             String?
+  /// Where the treasury's spends send their change (its internal-scope
+  /// address). Members without the viewing key check change against it.
+  changeAddress       String?
+  birthdayHeight      Int?
+  /// UFVK encrypted client-side under the coordinator's vault key.
+  encryptedViewingKey String?
+  /// What the coordinator's wallet last saw (balance, synced height, when),
+  /// sealed under the account key for everyone else with access.
+  sealedBalance       String?
+  members             TreasuryMember[]
+  invites             TreasuryInvite[]
+  proposals           SpendProposal[]
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
 }
 
-enum Schedule {
-  EVERY_TWO_WEEKS
-  EVERY_MONTH
-  EVERY_X_DAYS
+model TreasuryMember {
+  id                  String    @id @default(cuid())
+  treasuryId          String
+  treasury            Treasury  @relation(fields: [treasuryId], references: [id], onDelete: Cascade)
+  userId              String
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Hex FROST identifier, set by the key ceremony.
+  identifier          String?
+  /// The member's FROST key package (holding their signing share), encrypted
+  /// client-side under their vault key.
+  encryptedKeyPackage String?
+  /// What this member's ceremony produced; must match every other member's.
+  groupPublicKey      String?
+  publicKeyPackage    String?
+  /// The treasury's viewing key, Noise-encrypted by the coordinator to this
+  /// member's comms key. Signers use it to check the treasury's addresses and
+  /// the change of every payment they approve.
+  viewingKeyMessage   String?
+  /// Presence in the ceremony room, and whether their vault is unlocked.
+  lastSeenAt          DateTime?
+  ready               Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+
+  @@unique([treasuryId, userId])
+  @@index([userId])
 }
 
-model Payroll {
-  id         String            @id @default(cuid())
-  name       String
-  schedule   Schedule
-  customDays Int?
+/// One link per member slot while a treasury is being set up.
+model TreasuryInvite {
+  id           String    @id @default(cuid())
+  treasuryId   String
+  treasury     Treasury  @relation(fields: [treasuryId], references: [id], onDelete: Cascade)
+  acceptedById String?
+  acceptedBy   User?     @relation(fields: [acceptedById], references: [id], onDelete: SetNull)
+  expiresAt    DateTime
+  createdAt    DateTime  @default(now())
+
+  @@index([treasuryId])
+}
+
+enum SpendProposalStatus {
+  /// Waiting for members to approve (FROST round 1).
+  AWAITING_APPROVALS
+  /// Signers chosen and signing package sent (FROST round 2).
+  SIGNING
+  /// Signed and handed to the network.
+  BROADCAST
+  /// Mined.
+  CONFIRMED
+  FAILED
+  CANCELLED
+}
+
+/// A treasury spend: one transaction paying every payment of its payroll runs.
+/// Everything about what it pays is sealed under the account key; the server
+/// only coordinates who approved and signed.
+model SpendProposal {
+  /// Random UUID chosen by the coordinator's browser, bound into `sealed`.
+  id             String              @id @default(cuid())
+  treasuryId     String
+  treasury       Treasury            @relation(fields: [treasuryId], references: [id], onDelete: Cascade)
+  createdById    String
+  createdBy      User                @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  status         SpendProposalStatus @default(AWAITING_APPROVALS)
+  /// The payment request, sighash, randomizers, amounts, fee, expiry height,
+  /// payroll runs and recipients, sealed under the account key.
+  sealed         String
+  /// The proven, unsigned PCZT members verify before approving, sealed under
+  /// the account key. Dropped once the spend is closed.
+  sealedPczt     String?
+  /// The transaction id once broadcast, sealed under the account key.
+  sealedTxid     String?
+  /// frostd session carrying this spend's FROST messages.
+  frostSessionId String
+  /// Users the coordinator picked to sign once enough members approved.
+  signerIds      String[]
+  error          String?
+  /// What the coordinator's browser is doing with it, e.g. "Sending the
+  /// transaction", so everyone can see a spend that isn't moving.
+  progress       String?
+  progressAt     DateTime?
+  expiresAt      DateTime
+  approvals      ProposalApproval[]
+  broadcastAt    DateTime?
+  confirmedAt    DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@index([treasuryId])
+}
+
+enum ApprovalDecision {
+  APPROVE
+  REJECT
+}
+
+model ProposalApproval {
+  id         String           @id @default(cuid())
+  proposalId String
+  proposal   SpendProposal    @relation(fields: [proposalId], references: [id], onDelete: Cascade)
   userId     String
-  user       User              @relation(fields: [userId], references: [id])
-  employees  PayrollEmployee[]
-  payments   Payment[]
-  runs       PayrollRun[]
-  createdAt  DateTime          @default(now())
-  updatedAt  DateTime          @updatedAt
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  decision   ApprovalDecision
+  /// Set once the member sent their signature share.
+  signedAt   DateTime?
+  createdAt  DateTime         @default(now())
+
+  @@unique([proposalId, userId])
 }
 
-model PayrollEmployee {
-  payrollId  String
-  employeeId String
-  payroll    Payroll  @relation(fields: [payrollId], references: [id], onDelete: Cascade)
-  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+/// One piece of an account's payroll data (an employee, a payroll, or a
+/// payroll run with its payments), encrypted in the browser under the account
+/// key. The server can't tell what kind of record it is.
+model SealedRecord {
+  /// Chosen by the browser and bound into the ciphertext.
+  id        String @id
+  accountId String
+  account   User   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  /// base64 IV + AES-GCM ciphertext.
+  data      String
+  /// Bumped on every write. Writes name the version they replace, so two
+  /// people editing at once can't silently overwrite each other.
+  version   Int    @default(1)
 
-  @@id([payrollId, employeeId])
-}
-
-enum PaymentStatus {
-  PENDING
-  COMPLETED
-  SKIPPED
-}
-
-model Payment {
-  id         String        @id @default(cuid())
-  employeeId String
-  payrollId  String
-  runId      String
-  amountUsd  Float
-  amountZec  Float
-  memo       String        @unique
-  status     PaymentStatus @default(PENDING)
-  txHash     String?
-  employee   Employee      @relation(fields: [employeeId], references: [id])
-  payroll    Payroll       @relation(fields: [payrollId], references: [id])
-  run        PayrollRun    @relation(fields: [runId], references: [id])
-  createdAt  DateTime      @default(now())
-}
-
-enum PayrollRunStatus {
-  PENDING
-  IN_PROGRESS
-  COMPLETED
-}
-
-model PayrollRun {
-  id          String           @id @default(cuid())
-  payrollId   String
-  status      PayrollRunStatus @default(PENDING)
-  zecPriceUsd Float
-  payroll     Payroll          @relation(fields: [payrollId], references: [id])
-  payments    Payment[]
-  createdAt   DateTime         @default(now())
-  completedAt DateTime?
+  @@index([accountId])
 }

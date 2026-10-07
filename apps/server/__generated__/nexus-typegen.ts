@@ -14,13 +14,26 @@ declare global {
 }
 
 export interface NexusGenInputs {
+  SealedRecordDelete: { // input type
+    id: string; // ID!
+    version: number; // Int!
+  }
+  SealedRecordWrite: { // input type
+    data: string; // String!
+    id: string; // ID!
+    version: number; // Int!
+  }
+  ViewingKeyMessageInput: { // input type
+    message: string; // String!
+    userId: string; // ID!
+  }
 }
 
 export interface NexusGenEnums {
-  PaymentStatus: "COMPLETED" | "PENDING" | "SKIPPED"
-  PayrollRunStatus: "COMPLETED" | "IN_PROGRESS" | "PENDING"
-  SalaryCurrency: "USD" | "ZEC"
-  Schedule: "EVERY_MONTH" | "EVERY_TWO_WEEKS" | "EVERY_X_DAYS"
+  AccessRole: "DELEGATE" | "MEMBER"
+  ApprovalDecision: "APPROVE" | "REJECT"
+  SpendProposalStatus: "AWAITING_APPROVALS" | "BROADCAST" | "CANCELLED" | "CONFIRMED" | "FAILED" | "SIGNING"
+  TreasuryStatus: "ACTIVE" | "DRAFT" | "KEYGEN"
 }
 
 export interface NexusGenScalars {
@@ -32,74 +45,88 @@ export interface NexusGenScalars {
 }
 
 export interface NexusGenObjects {
+  AccessInvite: { // root type
+    id: string; // ID!
+    role: NexusGenEnums['AccessRole']; // AccessRole!
+  }
+  AccessInvitePreview: { // root type
+    expiresAt: string; // String!
+    ownerUsername: string; // String!
+    role: NexusGenEnums['AccessRole']; // AccessRole!
+  }
+  AccountKey: { // root type
+    exists: boolean; // Boolean!
+    sealedBy?: string | null; // String
+    sealedKey?: string | null; // String
+  }
   AuthPayload: { // root type
     token: string; // String!
     user: NexusGenRootTypes['User']; // User!
   }
-  DashboardStats: { // root type
-    nextPayrollDue?: NexusGenRootTypes['NextPayrollDue'] | null; // NextPayrollDue
-    recentRuns: NexusGenRootTypes['PayrollRun'][]; // [PayrollRun!]!
-    zecSpentByMonth: NexusGenRootTypes['ZecSpentByMonth'][]; // [ZecSpentByMonth!]!
-  }
-  DelegateInvite: { // root type
-    id: string; // ID!
-  }
-  DelegateInvitePreview: { // root type
-    expiresAt: string; // String!
-    ownerUsername: string; // String!
-  }
-  Employee: { // root type
-    id: string; // ID!
-    name: string; // String!
-    salaryAmount: number; // Float!
-    salaryCurrency: NexusGenEnums['SalaryCurrency']; // SalaryCurrency!
-    title?: string | null; // String
-    walletAddress: string; // String!
-    walletVerified: boolean; // Boolean!
-  }
   Mutation: {};
-  NextPayrollDue: { // root type
-    dueDate: string; // String!
-    employeeCount: number; // Int!
+  Passkey: { // root type
+    credentialId: string; // String!
     id: string; // ID!
-    name: string; // String!
-    totalUsd: number; // Float!
+    prfSalt: string; // String!
+    transports: string[]; // [String!]!
+    wrappedVaultKey: string; // String!
   }
-  Payment: { // root type
-    amountUsd: number; // Float!
-    amountZec: number; // Float!
+  ProposalApproval: { // root type
+    decision: NexusGenEnums['ApprovalDecision']; // ApprovalDecision!
     id: string; // ID!
-    memo: string; // String!
-    status: NexusGenEnums['PaymentStatus']; // PaymentStatus!
-    txHash?: string | null; // String
-  }
-  Payroll: { // root type
-    customDays?: number | null; // Int
-    id: string; // ID!
-    name: string; // String!
-    schedule: NexusGenEnums['Schedule']; // Schedule!
-  }
-  PayrollEmployee: { // root type
-    employeeId: string; // String!
-    payrollId: string; // String!
-  }
-  PayrollRun: { // root type
-    id: string; // ID!
-    zecPriceUsd: number; // Float!
   }
   Query: {};
+  SealedRecord: { // root type
+    data: string; // String!
+    id: string; // ID!
+    version: number; // Int!
+  }
+  SpendProposal: { // root type
+    error?: string | null; // String
+    frostSessionId: string; // String!
+    id: string; // ID!
+    progress?: string | null; // String
+    sealed: string; // String!
+    sealedPczt?: string | null; // String
+    sealedTxid?: string | null; // String
+    signerIds: string[]; // [ID!]!
+    status: NexusGenEnums['SpendProposalStatus']; // SpendProposalStatus!
+  }
+  Treasury: { // root type
+    address?: string | null; // String
+    birthdayHeight?: number | null; // Int
+    changeAddress?: string | null; // String
+    description?: string | null; // String
+    dkgSessionId?: string | null; // String
+    groupPublicKey?: string | null; // String
+    id: string; // ID!
+    name: string; // String!
+    publicKeyPackage?: string | null; // String
+    sealedBalance?: string | null; // String
+    status: NexusGenEnums['TreasuryStatus']; // TreasuryStatus!
+    threshold: number; // Int!
+  }
+  TreasuryInvite: { // root type
+    id: string; // ID!
+  }
+  TreasuryInvitePreview: { // root type
+    expiresAt: string; // String!
+    memberCount: number; // Int!
+    ownerUsername: string; // String!
+    threshold: number; // Int!
+    treasuryDescription?: string | null; // String
+    treasuryName: string; // String!
+  }
+  TreasuryMember: { // root type
+    groupPublicKey?: string | null; // String
+    id: string; // ID!
+    identifier?: string | null; // String
+  }
   User: { // root type
+    commsPublicKey?: string | null; // String
     id: string; // ID!
     name?: string | null; // String
     username: string; // String!
-    walletBirthdayHeight?: number | null; // Int
-  }
-  ZecBalance: { // root type
-    available: number; // Float!
-  }
-  ZecSpentByMonth: { // root type
-    amount: number; // Float!
-    month: string; // String!
   }
 }
 
@@ -114,366 +141,524 @@ export type NexusGenRootTypes = NexusGenObjects
 export type NexusGenAllTypes = NexusGenRootTypes & NexusGenScalars & NexusGenEnums
 
 export interface NexusGenFieldTypes {
+  AccessInvite: { // field return type
+    createdAt: string; // String!
+    expiresAt: string; // String!
+    id: string; // ID!
+    role: NexusGenEnums['AccessRole']; // AccessRole!
+    token: string; // String!
+  }
+  AccessInvitePreview: { // field return type
+    expiresAt: string; // String!
+    ownerUsername: string; // String!
+    role: NexusGenEnums['AccessRole']; // AccessRole!
+  }
+  AccountKey: { // field return type
+    exists: boolean; // Boolean!
+    sealedBy: string | null; // String
+    sealedKey: string | null; // String
+  }
   AuthPayload: { // field return type
     token: string; // String!
     user: NexusGenRootTypes['User']; // User!
   }
-  DashboardStats: { // field return type
-    nextPayrollDue: NexusGenRootTypes['NextPayrollDue'] | null; // NextPayrollDue
-    recentRuns: NexusGenRootTypes['PayrollRun'][]; // [PayrollRun!]!
-    zecSpentByMonth: NexusGenRootTypes['ZecSpentByMonth'][]; // [ZecSpentByMonth!]!
+  Mutation: { // field return type
+    acceptAccessInvite: NexusGenRootTypes['AuthPayload']; // AuthPayload!
+    acceptTreasuryInvite: NexusGenRootTypes['AuthPayload']; // AuthPayload!
+    approveSpendProposal: NexusGenRootTypes['SpendProposal']; // SpendProposal!
+    cancelSpendProposal: NexusGenRootTypes['SpendProposal']; // SpendProposal!
+    changePassword: NexusGenRootTypes['AuthPayload']; // AuthPayload!
+    createAccessInvite: NexusGenRootTypes['AccessInvite']; // AccessInvite!
+    createAccountKey: NexusGenRootTypes['AccountKey']; // AccountKey!
+    createSpendProposal: NexusGenRootTypes['SpendProposal']; // SpendProposal!
+    createTreasury: NexusGenRootTypes['Treasury']; // Treasury!
+    createTreasuryInvite: NexusGenRootTypes['TreasuryInvite']; // TreasuryInvite!
+    deleteAccount: boolean; // Boolean!
+    deleteTreasury: boolean; // Boolean!
+    finalizeTreasury: NexusGenRootTypes['Treasury']; // Treasury!
+    login: NexusGenRootTypes['AuthPayload']; // AuthPayload!
+    markProposalBroadcast: NexusGenRootTypes['SpendProposal']; // SpendProposal!
+    markProposalConfirmed: NexusGenRootTypes['SpendProposal']; // SpendProposal!
+    markProposalSigned: NexusGenRootTypes['SpendProposal']; // SpendProposal!
+    register: NexusGenRootTypes['AuthPayload']; // AuthPayload!
+    registerPasskey: NexusGenRootTypes['Passkey']; // Passkey!
+    rejectSpendProposal: NexusGenRootTypes['SpendProposal']; // SpendProposal!
+    removeAccountMember: NexusGenRootTypes['User']; // User!
+    removePasskey: NexusGenRootTypes['Passkey']; // Passkey!
+    removeTreasuryMember: NexusGenRootTypes['TreasuryMember']; // TreasuryMember!
+    reportProposalProblem: NexusGenRootTypes['SpendProposal']; // SpendProposal!
+    reportProposalProgress: NexusGenRootTypes['SpendProposal']; // SpendProposal!
+    reportTreasuryBalance: NexusGenRootTypes['Treasury']; // Treasury!
+    resetTreasuryKeygen: NexusGenRootTypes['Treasury']; // Treasury!
+    revokeAccessInvite: NexusGenRootTypes['AccessInvite']; // AccessInvite!
+    revokeTreasuryInvite: NexusGenRootTypes['TreasuryInvite']; // TreasuryInvite!
+    setMemberAccess: NexusGenRootTypes['User']; // User!
+    setProposalSigners: NexusGenRootTypes['SpendProposal']; // SpendProposal!
+    shareAccountKey: NexusGenRootTypes['User']; // User!
+    shareTreasuryViewingKey: NexusGenRootTypes['Treasury']; // Treasury!
+    startTreasuryKeygen: NexusGenRootTypes['Treasury']; // Treasury!
+    submitKeygenResult: NexusGenRootTypes['TreasuryMember']; // TreasuryMember!
+    treasuryHeartbeat: NexusGenRootTypes['TreasuryMember']; // TreasuryMember!
+    updateTreasury: NexusGenRootTypes['Treasury']; // Treasury!
+    writeSealedRecords: NexusGenRootTypes['SealedRecord'][]; // [SealedRecord!]!
   }
-  DelegateInvite: { // field return type
+  Passkey: { // field return type
+    createdAt: string; // String!
+    credentialId: string; // String!
+    id: string; // ID!
+    prfSalt: string; // String!
+    transports: string[]; // [String!]!
+    wrappedVaultKey: string; // String!
+  }
+  ProposalApproval: { // field return type
+    createdAt: string; // String!
+    decision: NexusGenEnums['ApprovalDecision']; // ApprovalDecision!
+    id: string; // ID!
+    signedAt: string | null; // String
+    user: NexusGenRootTypes['User']; // User!
+  }
+  Query: { // field return type
+    accessInvite: NexusGenRootTypes['AccessInvitePreview'] | null; // AccessInvitePreview
+    accessInvites: NexusGenRootTypes['AccessInvite'][]; // [AccessInvite!]!
+    accountKey: NexusGenRootTypes['AccountKey']; // AccountKey!
+    accountMembers: NexusGenRootTypes['User'][]; // [User!]!
+    me: NexusGenRootTypes['User'] | null; // User
+    myPasskeys: NexusGenRootTypes['Passkey'][]; // [Passkey!]!
+    sealedRecords: NexusGenRootTypes['SealedRecord'][]; // [SealedRecord!]!
+    spendProposal: NexusGenRootTypes['SpendProposal'] | null; // SpendProposal
+    spendProposals: NexusGenRootTypes['SpendProposal'][]; // [SpendProposal!]!
+    treasury: NexusGenRootTypes['Treasury'] | null; // Treasury
+    treasuryInvite: NexusGenRootTypes['TreasuryInvitePreview'] | null; // TreasuryInvitePreview
+  }
+  SealedRecord: { // field return type
+    data: string; // String!
+    id: string; // ID!
+    version: number; // Int!
+  }
+  SpendProposal: { // field return type
+    approvals: NexusGenRootTypes['ProposalApproval'][]; // [ProposalApproval!]!
+    broadcastAt: string | null; // String
+    confirmedAt: string | null; // String
+    createdAt: string; // String!
+    createdBy: NexusGenRootTypes['User']; // User!
+    error: string | null; // String
+    expiresAt: string; // String!
+    frostSessionId: string; // String!
+    id: string; // ID!
+    myApproval: NexusGenRootTypes['ProposalApproval'] | null; // ProposalApproval
+    progress: string | null; // String
+    progressAt: string | null; // String
+    sealed: string; // String!
+    sealedPczt: string | null; // String
+    sealedTxid: string | null; // String
+    signerIds: string[]; // [ID!]!
+    status: NexusGenEnums['SpendProposalStatus']; // SpendProposalStatus!
+    threshold: number; // Int!
+  }
+  Treasury: { // field return type
+    address: string | null; // String
+    birthdayHeight: number | null; // Int
+    changeAddress: string | null; // String
+    coordinator: NexusGenRootTypes['User']; // User!
+    createdAt: string; // String!
+    description: string | null; // String
+    dkgSessionId: string | null; // String
+    encryptedViewingKey: string | null; // String
+    groupPublicKey: string | null; // String
+    id: string; // ID!
+    invites: NexusGenRootTypes['TreasuryInvite'][]; // [TreasuryInvite!]!
+    isCoordinator: boolean; // Boolean!
+    keygenStartedAt: string | null; // String
+    members: NexusGenRootTypes['TreasuryMember'][]; // [TreasuryMember!]!
+    myMembership: NexusGenRootTypes['TreasuryMember'] | null; // TreasuryMember
+    name: string; // String!
+    publicKeyPackage: string | null; // String
+    sealedBalance: string | null; // String
+    signerCount: number; // Int!
+    status: NexusGenEnums['TreasuryStatus']; // TreasuryStatus!
+    threshold: number; // Int!
+  }
+  TreasuryInvite: { // field return type
     createdAt: string; // String!
     expiresAt: string; // String!
     id: string; // ID!
     token: string; // String!
   }
-  DelegateInvitePreview: { // field return type
+  TreasuryInvitePreview: { // field return type
     expiresAt: string; // String!
+    memberCount: number; // Int!
     ownerUsername: string; // String!
+    threshold: number; // Int!
+    treasuryDescription: string | null; // String
+    treasuryName: string; // String!
   }
-  Employee: { // field return type
-    createdAt: string; // String!
+  TreasuryMember: { // field return type
+    encryptedKeyPackage: string | null; // String
+    groupPublicKey: string | null; // String
+    hasKeyShare: boolean; // Boolean!
+    hasViewingKey: boolean; // Boolean!
     id: string; // ID!
-    name: string; // String!
-    salaryAmount: number; // Float!
-    salaryCurrency: NexusGenEnums['SalaryCurrency']; // SalaryCurrency!
-    title: string | null; // String
-    updatedAt: string; // String!
-    walletAddress: string; // String!
-    walletVerified: boolean; // Boolean!
-  }
-  Mutation: { // field return type
-    acceptDelegateInvite: NexusGenRootTypes['AuthPayload']; // AuthPayload!
-    changePassword: NexusGenRootTypes['AuthPayload']; // AuthPayload!
-    completePayrollRun: NexusGenRootTypes['PayrollRun']; // PayrollRun!
-    createDelegateInvite: NexusGenRootTypes['DelegateInvite']; // DelegateInvite!
-    createEmployee: NexusGenRootTypes['Employee']; // Employee!
-    createPayroll: NexusGenRootTypes['Payroll']; // Payroll!
-    deleteAccount: boolean; // Boolean!
-    deleteEmployee: NexusGenRootTypes['Employee']; // Employee!
-    deletePayroll: NexusGenRootTypes['Payroll']; // Payroll!
-    importEmployeesCsv: NexusGenRootTypes['Employee'][]; // [Employee!]!
-    login: NexusGenRootTypes['AuthPayload']; // AuthPayload!
-    register: NexusGenRootTypes['AuthPayload']; // AuthPayload!
-    removeDelegate: NexusGenRootTypes['User']; // User!
-    revokeDelegateInvite: NexusGenRootTypes['DelegateInvite']; // DelegateInvite!
-    startPayrollRun: NexusGenRootTypes['PayrollRun']; // PayrollRun!
-    updateEmployee: NexusGenRootTypes['Employee']; // Employee!
-    updatePaymentStatus: NexusGenRootTypes['Payment']; // Payment!
-    updatePayroll: NexusGenRootTypes['Payroll']; // Payroll!
-    updateUser: NexusGenRootTypes['User']; // User!
-  }
-  NextPayrollDue: { // field return type
-    dueDate: string; // String!
-    employeeCount: number; // Int!
-    id: string; // ID!
-    name: string; // String!
-    totalUsd: number; // Float!
-  }
-  Payment: { // field return type
-    amountUsd: number; // Float!
-    amountZec: number; // Float!
-    createdAt: string; // String!
-    employee: NexusGenRootTypes['Employee']; // Employee!
-    id: string; // ID!
-    memo: string; // String!
-    payroll: NexusGenRootTypes['Payroll']; // Payroll!
-    status: NexusGenEnums['PaymentStatus']; // PaymentStatus!
-    txHash: string | null; // String
-  }
-  Payroll: { // field return type
-    createdAt: string; // String!
-    customDays: number | null; // Int
-    employees: NexusGenRootTypes['PayrollEmployee'][]; // [PayrollEmployee!]!
-    id: string; // ID!
-    name: string; // String!
-    runs: NexusGenRootTypes['PayrollRun'][]; // [PayrollRun!]!
-    schedule: NexusGenEnums['Schedule']; // Schedule!
-  }
-  PayrollEmployee: { // field return type
-    employee: NexusGenRootTypes['Employee']; // Employee!
-    employeeId: string; // String!
-    payrollId: string; // String!
-  }
-  PayrollRun: { // field return type
-    completedAt: string | null; // String
-    createdAt: string; // String!
-    id: string; // ID!
-    payments: NexusGenRootTypes['Payment'][]; // [Payment!]!
-    payroll: NexusGenRootTypes['Payroll']; // Payroll!
-    status: NexusGenEnums['PayrollRunStatus']; // PayrollRunStatus!
-    zecPriceUsd: number; // Float!
-  }
-  Query: { // field return type
-    dashboardStats: NexusGenRootTypes['DashboardStats']; // DashboardStats!
-    delegateInvite: NexusGenRootTypes['DelegateInvitePreview'] | null; // DelegateInvitePreview
-    delegateInvites: NexusGenRootTypes['DelegateInvite'][]; // [DelegateInvite!]!
-    delegates: NexusGenRootTypes['User'][]; // [User!]!
-    employee: NexusGenRootTypes['Employee'] | null; // Employee
-    employees: NexusGenRootTypes['Employee'][]; // [Employee!]!
-    me: NexusGenRootTypes['User'] | null; // User
-    payments: NexusGenRootTypes['Payment'][]; // [Payment!]!
-    payroll: NexusGenRootTypes['Payroll'] | null; // Payroll
-    payrollRun: NexusGenRootTypes['PayrollRun'] | null; // PayrollRun
-    payrolls: NexusGenRootTypes['Payroll'][]; // [Payroll!]!
-    zecBalance: NexusGenRootTypes['ZecBalance'] | null; // ZecBalance
+    identifier: string | null; // String
+    isCoordinator: boolean; // Boolean!
+    joinedAt: string; // String!
+    online: boolean; // Boolean!
+    ready: boolean; // Boolean!
+    user: NexusGenRootTypes['User']; // User!
+    viewingKeyMessage: string | null; // String
   }
   User: { // field return type
+    canEditPayroll: boolean; // Boolean!
+    commsPublicKey: string | null; // String
     createdAt: string; // String!
-    employees: NexusGenRootTypes['Employee'][]; // [Employee!]!
-    hasEmployees: boolean; // Boolean!
-    hasPayrollRun: boolean; // Boolean!
-    hasPayrolls: boolean; // Boolean!
-    hasVerifiedPayment: boolean; // Boolean!
-    hasWallet: boolean; // Boolean!
+    hasAccountKey: boolean; // Boolean!
+    hasPasskey: boolean; // Boolean!
+    hasTreasury: boolean; // Boolean!
     id: string; // ID!
+    isAccountOwner: boolean; // Boolean!
     name: string | null; // String
-    needsWalkthrough: boolean; // Boolean!
     owner: NexusGenRootTypes['User'] | null; // User
-    payrolls: NexusGenRootTypes['Payroll'][]; // [Payroll!]!
+    role: NexusGenEnums['AccessRole'] | null; // AccessRole
     username: string; // String!
-    walletBirthdayHeight: number | null; // Int
-    zcashViewingKey: string | null; // String
-  }
-  ZecBalance: { // field return type
-    available: number; // Float!
-  }
-  ZecSpentByMonth: { // field return type
-    amount: number; // Float!
-    month: string; // String!
   }
 }
 
 export interface NexusGenFieldTypeNames {
+  AccessInvite: { // field return type name
+    createdAt: 'String'
+    expiresAt: 'String'
+    id: 'ID'
+    role: 'AccessRole'
+    token: 'String'
+  }
+  AccessInvitePreview: { // field return type name
+    expiresAt: 'String'
+    ownerUsername: 'String'
+    role: 'AccessRole'
+  }
+  AccountKey: { // field return type name
+    exists: 'Boolean'
+    sealedBy: 'String'
+    sealedKey: 'String'
+  }
   AuthPayload: { // field return type name
     token: 'String'
     user: 'User'
   }
-  DashboardStats: { // field return type name
-    nextPayrollDue: 'NextPayrollDue'
-    recentRuns: 'PayrollRun'
-    zecSpentByMonth: 'ZecSpentByMonth'
+  Mutation: { // field return type name
+    acceptAccessInvite: 'AuthPayload'
+    acceptTreasuryInvite: 'AuthPayload'
+    approveSpendProposal: 'SpendProposal'
+    cancelSpendProposal: 'SpendProposal'
+    changePassword: 'AuthPayload'
+    createAccessInvite: 'AccessInvite'
+    createAccountKey: 'AccountKey'
+    createSpendProposal: 'SpendProposal'
+    createTreasury: 'Treasury'
+    createTreasuryInvite: 'TreasuryInvite'
+    deleteAccount: 'Boolean'
+    deleteTreasury: 'Boolean'
+    finalizeTreasury: 'Treasury'
+    login: 'AuthPayload'
+    markProposalBroadcast: 'SpendProposal'
+    markProposalConfirmed: 'SpendProposal'
+    markProposalSigned: 'SpendProposal'
+    register: 'AuthPayload'
+    registerPasskey: 'Passkey'
+    rejectSpendProposal: 'SpendProposal'
+    removeAccountMember: 'User'
+    removePasskey: 'Passkey'
+    removeTreasuryMember: 'TreasuryMember'
+    reportProposalProblem: 'SpendProposal'
+    reportProposalProgress: 'SpendProposal'
+    reportTreasuryBalance: 'Treasury'
+    resetTreasuryKeygen: 'Treasury'
+    revokeAccessInvite: 'AccessInvite'
+    revokeTreasuryInvite: 'TreasuryInvite'
+    setMemberAccess: 'User'
+    setProposalSigners: 'SpendProposal'
+    shareAccountKey: 'User'
+    shareTreasuryViewingKey: 'Treasury'
+    startTreasuryKeygen: 'Treasury'
+    submitKeygenResult: 'TreasuryMember'
+    treasuryHeartbeat: 'TreasuryMember'
+    updateTreasury: 'Treasury'
+    writeSealedRecords: 'SealedRecord'
   }
-  DelegateInvite: { // field return type name
+  Passkey: { // field return type name
+    createdAt: 'String'
+    credentialId: 'String'
+    id: 'ID'
+    prfSalt: 'String'
+    transports: 'String'
+    wrappedVaultKey: 'String'
+  }
+  ProposalApproval: { // field return type name
+    createdAt: 'String'
+    decision: 'ApprovalDecision'
+    id: 'ID'
+    signedAt: 'String'
+    user: 'User'
+  }
+  Query: { // field return type name
+    accessInvite: 'AccessInvitePreview'
+    accessInvites: 'AccessInvite'
+    accountKey: 'AccountKey'
+    accountMembers: 'User'
+    me: 'User'
+    myPasskeys: 'Passkey'
+    sealedRecords: 'SealedRecord'
+    spendProposal: 'SpendProposal'
+    spendProposals: 'SpendProposal'
+    treasury: 'Treasury'
+    treasuryInvite: 'TreasuryInvitePreview'
+  }
+  SealedRecord: { // field return type name
+    data: 'String'
+    id: 'ID'
+    version: 'Int'
+  }
+  SpendProposal: { // field return type name
+    approvals: 'ProposalApproval'
+    broadcastAt: 'String'
+    confirmedAt: 'String'
+    createdAt: 'String'
+    createdBy: 'User'
+    error: 'String'
+    expiresAt: 'String'
+    frostSessionId: 'String'
+    id: 'ID'
+    myApproval: 'ProposalApproval'
+    progress: 'String'
+    progressAt: 'String'
+    sealed: 'String'
+    sealedPczt: 'String'
+    sealedTxid: 'String'
+    signerIds: 'ID'
+    status: 'SpendProposalStatus'
+    threshold: 'Int'
+  }
+  Treasury: { // field return type name
+    address: 'String'
+    birthdayHeight: 'Int'
+    changeAddress: 'String'
+    coordinator: 'User'
+    createdAt: 'String'
+    description: 'String'
+    dkgSessionId: 'String'
+    encryptedViewingKey: 'String'
+    groupPublicKey: 'String'
+    id: 'ID'
+    invites: 'TreasuryInvite'
+    isCoordinator: 'Boolean'
+    keygenStartedAt: 'String'
+    members: 'TreasuryMember'
+    myMembership: 'TreasuryMember'
+    name: 'String'
+    publicKeyPackage: 'String'
+    sealedBalance: 'String'
+    signerCount: 'Int'
+    status: 'TreasuryStatus'
+    threshold: 'Int'
+  }
+  TreasuryInvite: { // field return type name
     createdAt: 'String'
     expiresAt: 'String'
     id: 'ID'
     token: 'String'
   }
-  DelegateInvitePreview: { // field return type name
+  TreasuryInvitePreview: { // field return type name
     expiresAt: 'String'
+    memberCount: 'Int'
     ownerUsername: 'String'
+    threshold: 'Int'
+    treasuryDescription: 'String'
+    treasuryName: 'String'
   }
-  Employee: { // field return type name
-    createdAt: 'String'
+  TreasuryMember: { // field return type name
+    encryptedKeyPackage: 'String'
+    groupPublicKey: 'String'
+    hasKeyShare: 'Boolean'
+    hasViewingKey: 'Boolean'
     id: 'ID'
-    name: 'String'
-    salaryAmount: 'Float'
-    salaryCurrency: 'SalaryCurrency'
-    title: 'String'
-    updatedAt: 'String'
-    walletAddress: 'String'
-    walletVerified: 'Boolean'
-  }
-  Mutation: { // field return type name
-    acceptDelegateInvite: 'AuthPayload'
-    changePassword: 'AuthPayload'
-    completePayrollRun: 'PayrollRun'
-    createDelegateInvite: 'DelegateInvite'
-    createEmployee: 'Employee'
-    createPayroll: 'Payroll'
-    deleteAccount: 'Boolean'
-    deleteEmployee: 'Employee'
-    deletePayroll: 'Payroll'
-    importEmployeesCsv: 'Employee'
-    login: 'AuthPayload'
-    register: 'AuthPayload'
-    removeDelegate: 'User'
-    revokeDelegateInvite: 'DelegateInvite'
-    startPayrollRun: 'PayrollRun'
-    updateEmployee: 'Employee'
-    updatePaymentStatus: 'Payment'
-    updatePayroll: 'Payroll'
-    updateUser: 'User'
-  }
-  NextPayrollDue: { // field return type name
-    dueDate: 'String'
-    employeeCount: 'Int'
-    id: 'ID'
-    name: 'String'
-    totalUsd: 'Float'
-  }
-  Payment: { // field return type name
-    amountUsd: 'Float'
-    amountZec: 'Float'
-    createdAt: 'String'
-    employee: 'Employee'
-    id: 'ID'
-    memo: 'String'
-    payroll: 'Payroll'
-    status: 'PaymentStatus'
-    txHash: 'String'
-  }
-  Payroll: { // field return type name
-    createdAt: 'String'
-    customDays: 'Int'
-    employees: 'PayrollEmployee'
-    id: 'ID'
-    name: 'String'
-    runs: 'PayrollRun'
-    schedule: 'Schedule'
-  }
-  PayrollEmployee: { // field return type name
-    employee: 'Employee'
-    employeeId: 'String'
-    payrollId: 'String'
-  }
-  PayrollRun: { // field return type name
-    completedAt: 'String'
-    createdAt: 'String'
-    id: 'ID'
-    payments: 'Payment'
-    payroll: 'Payroll'
-    status: 'PayrollRunStatus'
-    zecPriceUsd: 'Float'
-  }
-  Query: { // field return type name
-    dashboardStats: 'DashboardStats'
-    delegateInvite: 'DelegateInvitePreview'
-    delegateInvites: 'DelegateInvite'
-    delegates: 'User'
-    employee: 'Employee'
-    employees: 'Employee'
-    me: 'User'
-    payments: 'Payment'
-    payroll: 'Payroll'
-    payrollRun: 'PayrollRun'
-    payrolls: 'Payroll'
-    zecBalance: 'ZecBalance'
+    identifier: 'String'
+    isCoordinator: 'Boolean'
+    joinedAt: 'String'
+    online: 'Boolean'
+    ready: 'Boolean'
+    user: 'User'
+    viewingKeyMessage: 'String'
   }
   User: { // field return type name
+    canEditPayroll: 'Boolean'
+    commsPublicKey: 'String'
     createdAt: 'String'
-    employees: 'Employee'
-    hasEmployees: 'Boolean'
-    hasPayrollRun: 'Boolean'
-    hasPayrolls: 'Boolean'
-    hasVerifiedPayment: 'Boolean'
-    hasWallet: 'Boolean'
+    hasAccountKey: 'Boolean'
+    hasPasskey: 'Boolean'
+    hasTreasury: 'Boolean'
     id: 'ID'
+    isAccountOwner: 'Boolean'
     name: 'String'
-    needsWalkthrough: 'Boolean'
     owner: 'User'
-    payrolls: 'Payroll'
+    role: 'AccessRole'
     username: 'String'
-    walletBirthdayHeight: 'Int'
-    zcashViewingKey: 'String'
-  }
-  ZecBalance: { // field return type name
-    available: 'Float'
-  }
-  ZecSpentByMonth: { // field return type name
-    amount: 'Float'
-    month: 'String'
   }
 }
 
 export interface NexusGenArgTypes {
   Mutation: {
-    acceptDelegateInvite: { // args
+    acceptAccessInvite: { // args
       name: string; // String!
       password: string; // String!
       token: string; // String!
       username: string; // String!
+    }
+    acceptTreasuryInvite: { // args
+      name?: string | null; // String
+      password?: string | null; // String
+      token: string; // String!
+      username?: string | null; // String
+    }
+    approveSpendProposal: { // args
+      id: string; // ID!
+    }
+    cancelSpendProposal: { // args
+      id: string; // ID!
+      reason?: string | null; // String
     }
     changePassword: { // args
       currentPassword: string; // String!
       newPassword: string; // String!
     }
-    completePayrollRun: { // args
-      runId: string; // ID!
+    createAccessInvite: { // args
+      role?: NexusGenEnums['AccessRole'] | null; // AccessRole
     }
-    createEmployee: { // args
-      name: string; // String!
-      salaryAmount: number; // Float!
-      salaryCurrency?: NexusGenEnums['SalaryCurrency'] | null; // SalaryCurrency
-      title?: string | null; // String
-      walletAddress: string; // String!
+    createAccountKey: { // args
+      sealedKey: string; // String!
     }
-    createPayroll: { // args
-      customDays?: number | null; // Int
-      employeeIds: string[]; // [ID!]!
-      name: string; // String!
-      schedule: NexusGenEnums['Schedule']; // Schedule!
-    }
-    deleteEmployee: { // args
+    createSpendProposal: { // args
+      frostSessionId: string; // String!
       id: string; // ID!
+      sealed: string; // String!
+      sealedPczt: string; // String!
     }
-    deletePayroll: { // args
-      id: string; // ID!
+    createTreasury: { // args
+      description?: string | null; // String
+      name: string; // String!
     }
-    importEmployeesCsv: { // args
-      csvContent: string; // String!
+    deleteAccount: { // args
+      treasuryEmpty?: boolean | null; // Boolean
+    }
+    finalizeTreasury: { // args
+      address: string; // String!
+      birthdayHeight: number; // Int!
+      changeAddress: string; // String!
+      encryptedViewingKey: string; // String!
+      viewingKeyMessages: NexusGenInputs['ViewingKeyMessageInput'][]; // [ViewingKeyMessageInput!]!
     }
     login: { // args
       password: string; // String!
       username: string; // String!
     }
+    markProposalBroadcast: { // args
+      id: string; // ID!
+      sealedTxid: string; // String!
+    }
+    markProposalConfirmed: { // args
+      id: string; // ID!
+    }
+    markProposalSigned: { // args
+      id: string; // ID!
+    }
     register: { // args
       password: string; // String!
       username: string; // String!
     }
-    removeDelegate: { // args
+    registerPasskey: { // args
+      commsPublicKey: string; // String!
+      credentialId: string; // String!
+      prfSalt: string; // String!
+      transports?: string[] | null; // [String!]
+      wrappedVaultKey: string; // String!
+    }
+    rejectSpendProposal: { // args
       id: string; // ID!
     }
-    revokeDelegateInvite: { // args
+    removeAccountMember: { // args
+      userId: string; // ID!
+    }
+    removePasskey: { // args
       id: string; // ID!
     }
-    startPayrollRun: { // args
-      payrollId: string; // ID!
-    }
-    updateEmployee: { // args
+    removeTreasuryMember: { // args
       id: string; // ID!
+    }
+    reportProposalProblem: { // args
+      id: string; // ID!
+      problem?: string | null; // String
+    }
+    reportProposalProgress: { // args
+      id: string; // ID!
+      progress?: string | null; // String
+    }
+    reportTreasuryBalance: { // args
+      sealedBalance: string; // String!
+    }
+    revokeAccessInvite: { // args
+      id: string; // ID!
+    }
+    revokeTreasuryInvite: { // args
+      id: string; // ID!
+    }
+    setMemberAccess: { // args
+      role: NexusGenEnums['AccessRole']; // AccessRole!
+      userId: string; // ID!
+    }
+    setProposalSigners: { // args
+      id: string; // ID!
+      userIds: string[]; // [ID!]!
+    }
+    shareAccountKey: { // args
+      sealedKey: string; // String!
+      userId: string; // ID!
+    }
+    shareTreasuryViewingKey: { // args
+      viewingKeyMessages: NexusGenInputs['ViewingKeyMessageInput'][]; // [ViewingKeyMessageInput!]!
+    }
+    startTreasuryKeygen: { // args
+      dkgSessionId: string; // String!
+    }
+    submitKeygenResult: { // args
+      dkgSessionId: string; // String!
+      encryptedKeyPackage: string; // String!
+      groupPublicKey: string; // String!
+      identifier: string; // String!
+      publicKeyPackage: string; // String!
+    }
+    treasuryHeartbeat: { // args
+      ready: boolean; // Boolean!
+    }
+    updateTreasury: { // args
+      description?: string | null; // String
       name?: string | null; // String
-      salaryAmount?: number | null; // Float
-      salaryCurrency?: NexusGenEnums['SalaryCurrency'] | null; // SalaryCurrency
-      title?: string | null; // String
-      walletAddress?: string | null; // String
+      threshold?: number | null; // Int
     }
-    updatePaymentStatus: { // args
-      paymentId: string; // ID!
-      status: NexusGenEnums['PaymentStatus']; // PaymentStatus!
-      txHash?: string | null; // String
-    }
-    updatePayroll: { // args
-      customDays?: number | null; // Int
-      employeeIds?: string[] | null; // [ID!]
-      id: string; // ID!
-      name?: string | null; // String
-      schedule?: NexusGenEnums['Schedule'] | null; // Schedule
-    }
-    updateUser: { // args
-      walletBirthdayHeight?: number | null; // Int
-      zcashViewingKey?: string | null; // String
+    writeSealedRecords: { // args
+      deletes?: NexusGenInputs['SealedRecordDelete'][] | null; // [SealedRecordDelete!]
+      writes: NexusGenInputs['SealedRecordWrite'][]; // [SealedRecordWrite!]!
     }
   }
   Query: {
-    delegateInvite: { // args
+    accessInvite: { // args
       token: string; // String!
     }
-    employee: { // args
+    spendProposal: { // args
       id: string; // ID!
     }
-    payments: { // args
-      employeeId?: string | null; // ID
-      payrollId?: string | null; // ID
+    spendProposals: { // args
+      open?: boolean | null; // Boolean
     }
-    payroll: { // args
-      id: string; // ID!
-    }
-    payrollRun: { // args
-      id: string; // ID!
+    treasuryInvite: { // args
+      token: string; // String!
     }
   }
 }
@@ -486,7 +671,7 @@ export interface NexusGenTypeInterfaces {
 
 export type NexusGenObjectNames = keyof NexusGenObjects;
 
-export type NexusGenInputNames = never;
+export type NexusGenInputNames = keyof NexusGenInputs;
 
 export type NexusGenEnumNames = keyof NexusGenEnums;
 

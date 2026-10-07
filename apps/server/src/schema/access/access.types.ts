@@ -1,8 +1,9 @@
 import { objectType } from "nexus"
 import { inviteToken } from "../../auth/invite.js"
 
-export const DelegateInvite = objectType({
-  name: "DelegateInvite",
+/** A link that creates one member or delegate login in the owner's account. */
+export const AccessInvite = objectType({
+  name: "AccessInvite",
   definition(t) {
     t.nonNull.id("id")
     t.nonNull.string("token", {
@@ -10,6 +11,7 @@ export const DelegateInvite = objectType({
         return inviteToken(parent.id)
       },
     })
+    t.nonNull.field("role", { type: "AccessRole" })
     t.nonNull.string("expiresAt", {
       resolve(parent) {
         return parent.expiresAt.toISOString()
@@ -24,10 +26,11 @@ export const DelegateInvite = objectType({
 })
 
 /** What someone holding an invite link may see before accepting it. */
-export const DelegateInvitePreview = objectType({
-  name: "DelegateInvitePreview",
+export const AccessInvitePreview = objectType({
+  name: "AccessInvitePreview",
   definition(t) {
     t.nonNull.string("ownerUsername")
+    t.nonNull.field("role", { type: "AccessRole" })
     t.nonNull.string("expiresAt")
   },
 })
