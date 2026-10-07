@@ -65,6 +65,7 @@ export interface DashboardViewProps {
   onNavigate: (path: string) => void
   onEditPayroll?: (payrollId: string) => void
   headerAction?: React.ReactNode
+  tutorial?: React.ReactNode
 }
 
 export function DashboardView({
@@ -76,6 +77,7 @@ export function DashboardView({
   onNavigate,
   onEditPayroll,
   headerAction,
+  tutorial,
 }: DashboardViewProps) {
   const [chartRange, setChartRange] = useState<"30d" | "6m" | "All">("All")
 
@@ -141,6 +143,8 @@ export function DashboardView({
         <h2 className="text-4xl font-light tracking-tight">Dashboard</h2>
         {headerAction}
       </div>
+
+      {tutorial}
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">

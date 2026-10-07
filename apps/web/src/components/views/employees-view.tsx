@@ -47,8 +47,122 @@ export interface EmployeesViewProps {
   onUpdateEmployee?: (id: string, data: { name: string; title: string | null; walletAddress: string; salaryAmount: number; salaryCurrency: SalaryCurrency }) => Promise<void>
   onDeleteEmployee?: (id: string) => Promise<void>
   onImportCsv?: (csvContent: string) => Promise<void>
+  /** Converts the salary when switching between USD and ZEC. */
+  zecPrice: number | null
   /** Members can look but not change anything. */
   readOnly?: boolean
+}
+
+const SALARY_DECIMALS: Record<SalaryCurrency, number> = { USD: 2, ZEC: 8 }
+
+/** Rounds to the currency's precision and drops trailing zeros: 5000 → "5000". */
+function toSalaryInput(value: number, currency: SalaryCurrency): string {
+  return value.toFixed(SALARY_DECIMALS[currency]).replace(/0+$/, "").replace(/\.$/, "")
+}
+
+/** Keeps digits and a single dot, with no more decimals than the currency has. */
+function sanitizeSalaryInput(text: string, currency: SalaryCurrency): string {
+  const [whole, ...fraction] = text.replace(/[^0-9.]/g, "").split(".")
+  if (!fraction.length) return whole
+  return `${whole}.${fraction.join("").slice(0, SALARY_DECIMALS[currency])}`
+}
+
+/** Groups the whole part with commas and leaves a half-typed fraction ("5." or "5.0") alone. */
+function formatSalaryInput(amount: string): string {
+  const [whole, fraction] = amount.split(".")
+  const grouped = whole ? Number(whole).toLocaleString("en-US") : ""
+  return fraction === undefined ? grouped : `${grouped}.${fraction}`
+}
+
+function SalaryField({
+  id,
+  amount,
+  currency,
+  zecPrice,
+  onAmountChange,
+  onCurrencyChange,
+  steppers = false,
+}: {
+  id: string
+  amount: string
+  currency: SalaryCurrency
+  zecPrice: number | null
+  onAmountChange: (amount: string) => void
+  onCurrencyChange: (currency: SalaryCurrency) => void
+  steppers?: boolean
+}) {
+  const step = currency === "ZEC" ? 10 : 100
+
+  function switchCurrency(next: SalaryCurrency) {
+    if (next === currency) return
+    const value = parseFloat(amount)
+    onAmountChange(
+      zecPrice && Number.isFinite(value)
+        ? toSalaryInput(next === "ZEC" ? value / zecPrice : value * zecPrice, next)
+        : sanitizeSalaryInput(amount, next)
+    )
+    onCurrencyChange(next)
+  }
+
+  const input = (
+    <Input
+      id={id}
+      type="text"
+      inputMode="decimal"
+      value={formatSalaryInput(amount)}
+      onChange={(e) => onAmountChange(sanitizeSalaryInput(e.target.value, currency))}
+      placeholder={currency === "ZEC" ? "150" : "5,000"}
+      required
+      className="h-14 text-center font-mono !text-3xl font-bold"
+    />
+  )
+
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id}>Salary</Label>
+      <div className="flex justify-center">
+        <div className="bg-muted inline-flex rounded-lg p-1">
+          {(["USD", "ZEC"] as const).map((c) => (
+            <button
+              key={c}
+              type="button"
+              className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${currency === c ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+              onClick={() => switchCurrency(c)}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+      </div>
+      {steppers ? (
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="size-8 shrink-0 p-0"
+            onClick={() =>
+              onAmountChange(toSalaryInput(Math.max(0, (parseFloat(amount) || 0) - step), currency))
+            }
+          >
+            −
+          </Button>
+          {input}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="size-8 shrink-0 p-0"
+            onClick={() => onAmountChange(toSalaryInput((parseFloat(amount) || 0) + step, currency))}
+          >
+            +
+          </Button>
+        </div>
+      ) : (
+        input
+      )}
+    </div>
+  )
 }
 
 function CopyButton({ text }: { text: string }) {
@@ -81,6 +195,7 @@ export function EmployeesView({
   onUpdateEmployee,
   onDeleteEmployee,
   onImportCsv,
+  zecPrice,
   readOnly = false,
 }: EmployeesViewProps) {
   const [addDialogOpen, setAddDialogOpen] = useState(false)
@@ -124,7 +239,7 @@ export function EmployeesView({
     setEditName(emp.name)
     setEditTitle(emp.title ?? "")
     setEditWallet(emp.walletAddress)
-    setEditSalary(emp.salaryAmount.toString())
+    setEditSalary(toSalaryInput(emp.salaryAmount, emp.salaryCurrency))
     setEditCurrency(emp.salaryCurrency)
     setDrawerOpen(true)
   }
@@ -260,74 +375,15 @@ Bob Smith,zs1ghi...jkl,4500,Designer`}
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="add-salary">Salary</Label>
-                <div className="flex justify-center">
-                  <div className="bg-muted inline-flex rounded-lg p-1">
-                    <button
-                      type="button"
-                      className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${currency === "USD" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-                      onClick={() => setCurrency("USD")}
-                    >
-                      USD
-                    </button>
-                    <button
-                      type="button"
-                      className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${currency === "ZEC" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-                      onClick={() => setCurrency("ZEC")}
-                    >
-                      ZEC
-                    </button>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="size-8 shrink-0 p-0"
-                    onClick={() =>
-                      setSalary((v) => {
-                        const step = currency === "ZEC" ? 10 : 100
-                        return String(Math.max(0, (parseFloat(v) || 0) - step))
-                      })
-                    }
-                  >
-                    −
-                  </Button>
-                  <Input
-                    id="add-salary"
-                    type="text"
-                    inputMode="decimal"
-                    value={
-                      salary
-                        ? parseFloat(salary).toLocaleString("en-US")
-                        : ""
-                    }
-                    onChange={(e) => {
-                      const raw = e.target.value.replace(/[^0-9.]/g, "")
-                      setSalary(raw)
-                    }}
-                    placeholder={currency === "ZEC" ? "150" : "5,000"}
-                    required
-                    className="h-14 text-center font-mono !text-3xl font-bold"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="size-8 shrink-0 p-0"
-                    onClick={() =>
-                      setSalary((v) => {
-                        const step = currency === "ZEC" ? 10 : 100
-                        return String((parseFloat(v) || 0) + step)
-                      })
-                    }
-                  >
-                    +
-                  </Button>
-                </div>
-              </div>
+              <SalaryField
+                id="add-salary"
+                amount={salary}
+                currency={currency}
+                zecPrice={zecPrice}
+                onAmountChange={setSalary}
+                onCurrencyChange={setCurrency}
+                steppers
+              />
               <DialogFooter>
                 <Button type="submit">Add Employee</Button>
               </DialogFooter>
@@ -440,42 +496,14 @@ Bob Smith,zs1ghi...jkl,4500,Designer`}
                 onChange={(e) => setEditWallet(e.target.value)}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-salary">Salary</Label>
-              <div className="flex justify-center">
-                <div className="bg-muted inline-flex rounded-lg p-1">
-                  <button
-                    type="button"
-                    className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${editCurrency === "USD" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-                    onClick={() => setEditCurrency("USD")}
-                  >
-                    USD
-                  </button>
-                  <button
-                    type="button"
-                    className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${editCurrency === "ZEC" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-                    onClick={() => setEditCurrency("ZEC")}
-                  >
-                    ZEC
-                  </button>
-                </div>
-              </div>
-              <Input
-                id="edit-salary"
-                type="text"
-                inputMode="decimal"
-                value={
-                  editSalary
-                    ? parseFloat(editSalary).toLocaleString("en-US")
-                    : ""
-                }
-                onChange={(e) => {
-                  const raw = e.target.value.replace(/[^0-9.]/g, "")
-                  setEditSalary(raw)
-                }}
-                className="h-14 text-center font-mono !text-3xl font-bold"
-              />
-            </div>
+            <SalaryField
+              id="edit-salary"
+              amount={editSalary}
+              currency={editCurrency}
+              zecPrice={zecPrice}
+              onAmountChange={setEditSalary}
+              onCurrencyChange={setEditCurrency}
+            />
           </fieldset>
           {!readOnly && (
             <SheetFooter>

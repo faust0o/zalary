@@ -1,6 +1,7 @@
 import { EmployeesView } from "../components/views/employees-view"
 import { useAccountData } from "../hooks/use-account-data"
 import { useTitle } from "../hooks/use-title"
+import { useZecPrice } from "../hooks/use-zec-price"
 import {
   createEmployee,
   deleteEmployee,
@@ -11,11 +12,13 @@ import {
 export function EmployeesPage() {
   useTitle("Employees")
   const { employees, payrolls, canEdit, write } = useAccountData()
+  const { price: zecPrice } = useZecPrice()
 
   return (
     <EmployeesView
       employees={employees}
       loading={false}
+      zecPrice={zecPrice}
       readOnly={!canEdit}
       onAddEmployee={async (input) => {
         await write({ put: [createEmployee(input)] })

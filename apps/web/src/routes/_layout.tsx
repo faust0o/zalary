@@ -62,7 +62,7 @@ export function Layout() {
                       </div>
                     </main>
                   </SidebarInset>
-                  <Walkthrough onCreateTreasury={openTreasury} />
+                  <Walkthrough />
                 </SidebarProvider>
               </TooltipProvider>
               <VaultGate />

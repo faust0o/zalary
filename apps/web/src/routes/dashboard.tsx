@@ -2,6 +2,7 @@ import { useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { DisburseModal } from "../components/disburse-modal/disburse-modal"
 import { DashboardView } from "../components/views/dashboard-view"
+import { WalkthroughCard } from "../components/walkthrough"
 import { useAccountData } from "../hooks/use-account-data"
 import { useTitle } from "../hooks/use-title"
 import { useZecPrice } from "../hooks/use-zec-price"
@@ -36,6 +37,7 @@ export function DashboardPage() {
           setDisburseOpen(true)
         }}
         onNavigate={(path) => navigate(path)}
+        tutorial={<WalkthroughCard />}
       />
       <DisburseModal
         open={disburseOpen}
